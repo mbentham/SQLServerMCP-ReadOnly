@@ -1,0 +1,104 @@
+namespace SqlServerMcp.Services;
+
+public interface IDarlingDataService
+{
+    Task<string> ExecutePressureDetectorAsync(
+        string serverName,
+        string? whatToCheck,
+        bool? skipQueries,
+        bool? skipPlanXml,
+        int? minimumDiskLatencyMs,
+        int? cpuUtilizationThreshold,
+        bool? skipWaits,
+        bool? skipPerfmon,
+        int? sampleSeconds,
+        bool? troubleshootBlocking,
+        bool? gimmeDanger,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteQuickieStoreAsync(
+        string serverName,
+        string? databaseName,
+        string? sortOrder,
+        int? top,
+        DateTime? startDate,
+        DateTime? endDate,
+        int? executionCount,
+        int? durationMs,
+        string? procedureSchema,
+        string? procedureName,
+        string? includeQueryIds,
+        string? includeQueryHashes,
+        string? ignorePlanIds,
+        string? ignoreQueryIds,
+        string? queryTextSearch,
+        string? queryTextSearchNot,
+        string? waitFilter,
+        string? queryType,
+        bool? expertMode,
+        bool? formatOutput,
+        bool? getAllDatabases,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteHealthParserAsync(
+        string serverName,
+        string? whatToCheck,
+        DateTime? startDate,
+        DateTime? endDate,
+        bool? warningsOnly,
+        string? databaseName,
+        int? waitDurationMs,
+        int? waitRoundIntervalMinutes,
+        bool? skipLocks,
+        int? pendingTaskThreshold,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteLogHunterAsync(
+        string serverName,
+        int? daysBack,
+        DateTime? startDate,
+        DateTime? endDate,
+        string? customMessage,
+        bool? customMessageOnly,
+        bool? firstLogOnly,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteHumanEventsBlockViewerAsync(
+        string serverName,
+        string? sessionName,
+        string? targetType,
+        DateTime? startDate,
+        DateTime? endDate,
+        string? databaseName,
+        string? objectName,
+        int? maxBlockingEvents,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteIndexCleanupAsync(
+        string serverName,
+        string? databaseName,
+        string? schemaName,
+        string? tableName,
+        int? minReads,
+        int? minWrites,
+        int? minSizeGb,
+        int? minRows,
+        bool? dedupeOnly,
+        bool? getAllDatabases,
+        CancellationToken cancellationToken);
+
+    Task<string> ExecuteQueryReproBuilderAsync(
+        string serverName,
+        string? databaseName,
+        DateTime? startDate,
+        DateTime? endDate,
+        string? includePlanIds,
+        string? includeQueryIds,
+        string? ignorePlanIds,
+        string? ignoreQueryIds,
+        string? procedureSchema,
+        string? procedureName,
+        string? queryTextSearch,
+        string? queryTextSearchNot,
+        CancellationToken cancellationToken);
+}

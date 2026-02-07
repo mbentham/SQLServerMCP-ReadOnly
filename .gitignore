@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+
+# .NET user/IDE settings
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+
+# JetBrains Rider
+.idea/
+
+# VS Code (optional; uncomment if you want to exclude)
+# .vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Test results
+TestResults/
+
+# Configuration (may contain connection strings with credentials)
+SqlServerMcp/appsettings.json
+
+# Security reviews
+securityreview/
+
+# Claude Code
+CLAUDE.md
+.claude/
