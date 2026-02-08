@@ -26,7 +26,7 @@ public sealed class FirstResponderService : IFirstResponderService
         "sp_BlitzIndex", "sp_BlitzWho", "sp_BlitzLock"
     };
 
-    internal static readonly string[] BlockedParameterPrefixes =
+    internal static readonly string[] BlockedParameters =
     [
         "@OutputDatabaseName", "@OutputSchemaName", "@OutputTableName",
         "@OutputServerName", "@OutputTableNameFileStats",
@@ -192,8 +192,8 @@ public sealed class FirstResponderService : IFirstResponderService
 
         foreach (var paramName in parameters.Keys)
         {
-            if (BlockedParameterPrefixes.Any(blocked =>
-                paramName.StartsWith(blocked, StringComparison.OrdinalIgnoreCase)))
+            if (BlockedParameters.Any(blocked =>
+                paramName.Equals(blocked, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
                     $"Parameter '{paramName}' is not allowed (output table parameters are blocked).");

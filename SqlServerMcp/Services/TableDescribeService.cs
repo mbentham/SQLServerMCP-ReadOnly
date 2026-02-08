@@ -68,13 +68,14 @@ public sealed class TableDescribeService : ITableDescribeService
     private async Task ValidateTableExistsAsync(SqlConnection connection,
         string schemaName, string tableName, CancellationToken cancellationToken)
     {
-        const string sql = "SELECT OBJECT_ID(@fullName, 'U')";
+        const string sql = "SELECT OBJECT_ID(QUOTENAME(@schema) + '.' + QUOTENAME(@table), 'U')";
 
         await using var cmd = new SqlCommand(sql, connection)
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
-        cmd.Parameters.AddWithValue("@fullName", $"{schemaName}.{tableName}");
+        cmd.Parameters.AddWithValue("@schema", schemaName);
+        cmd.Parameters.AddWithValue("@table", tableName);
 
         var result = await cmd.ExecuteScalarAsync(cancellationToken);
         if (result is null or DBNull)

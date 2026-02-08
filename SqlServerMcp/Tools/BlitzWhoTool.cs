@@ -19,7 +19,7 @@ public sealed class BlitzWhoTool
         Name = "sp_blitz_who",
         Title = "Active Query Monitor (sp_BlitzWho)",
         ReadOnly = true,
-        Idempotent = false)]
+        Idempotent = true)]
     [Description("Run sp_BlitzWho to monitor currently active queries. Enhanced replacement for sp_who/sp_who2 showing what's running now, with blocking info, tempdb usage, and query plans. Requires the First Responder Kit.")]
     public async Task<string> BlitzWho(
         [Description("Name of the SQL Server to query (use list_servers to see available names)")]

@@ -19,7 +19,7 @@ public sealed class PressureDetectorTool
         Name = "sp_pressure_detector",
         Title = "CPU & Memory Pressure Detector (sp_PressureDetector)",
         ReadOnly = true,
-        Idempotent = false)]
+        Idempotent = true)]
     [Description("Run sp_PressureDetector to diagnose CPU and memory pressure on SQL Server. Samples DMVs to identify resource bottlenecks, high-CPU queries, memory grants, and disk latency. Requires the DarlingData toolkit.")]
     public async Task<string> PressureDetector(
         [Description("Name of the SQL Server to query (use list_servers to see available names)")]

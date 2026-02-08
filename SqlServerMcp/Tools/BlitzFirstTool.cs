@@ -19,7 +19,7 @@ public sealed class BlitzFirstTool
         Name = "sp_blitz_first",
         Title = "Real-time Performance (sp_BlitzFirst)",
         ReadOnly = true,
-        Idempotent = false)]
+        Idempotent = true)]
     [Description("Run sp_BlitzFirst for real-time performance diagnostics. Samples DMVs over an interval (default 5 seconds) to identify current bottlenecks including waits, file latency, and perfmon counters. Requires the First Responder Kit.")]
     public async Task<string> BlitzFirst(
         [Description("Name of the SQL Server to query (use list_servers to see available names)")]

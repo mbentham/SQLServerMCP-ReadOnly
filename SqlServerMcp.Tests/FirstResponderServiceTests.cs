@@ -62,7 +62,7 @@ public class FirstResponderServiceTests
     }
 
     // ───────────────────────────────────────────────
-    // Blocked output parameter prefixes
+    // Blocked output parameters
     // ───────────────────────────────────────────────
 
     [Theory]
@@ -76,8 +76,8 @@ public class FirstResponderServiceTests
     [InlineData("@OutputTableRetentionDays")]
     public void BlockedParameter_IsInBlockList(string parameterName)
     {
-        Assert.Contains(FirstResponderService.BlockedParameterPrefixes,
-            blocked => parameterName.StartsWith(blocked, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(FirstResponderService.BlockedParameters,
+            blocked => parameterName.Equals(blocked, StringComparison.OrdinalIgnoreCase));
     }
 
     [Theory]
@@ -89,8 +89,8 @@ public class FirstResponderServiceTests
     [InlineData("@CheckServerInfo")]
     public void LegitParameter_IsNotBlocked(string parameterName)
     {
-        Assert.DoesNotContain(FirstResponderService.BlockedParameterPrefixes,
-            blocked => parameterName.StartsWith(blocked, StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(FirstResponderService.BlockedParameters,
+            blocked => parameterName.Equals(blocked, StringComparison.OrdinalIgnoreCase));
     }
 
     // ───────────────────────────────────────────────
@@ -157,8 +157,8 @@ public class FirstResponderServiceTests
     }
 
     [Fact]
-    public void BlockedParameterPrefixes_HasExpectedCount()
+    public void BlockedParameters_HasExpectedCount()
     {
-        Assert.Equal(8, FirstResponderService.BlockedParameterPrefixes.Length);
+        Assert.Equal(8, FirstResponderService.BlockedParameters.Length);
     }
 }

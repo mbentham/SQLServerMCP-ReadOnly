@@ -19,7 +19,7 @@ public sealed class WhoIsActiveTool
         Name = "sp_whoisactive",
         Title = "Active Session Monitor (sp_WhoIsActive)",
         ReadOnly = true,
-        Idempotent = false)]
+        Idempotent = true)]
     [Description("Run sp_WhoIsActive to monitor currently active sessions and queries. Shows running queries with wait info, blocking details, tempdb usage, and resource consumption. Requires sp_WhoIsActive to be installed.")]
     public async Task<string> WhoIsActive(
         [Description("Name of the SQL Server to query (use list_servers to see available names)")]
