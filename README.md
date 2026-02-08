@@ -1,4 +1,4 @@
-# SQL Server MCP
+# SQL Server MCP for DBAs
 
 A .NET MCP (Model Context Protocol) server that gives AI assistants safe, read-only access to SQL Server databases. Includes integrated DBA diagnostic tooling from the First Responder Kit, DarlingData, and sp_WhoIsActive.
 
@@ -218,6 +218,11 @@ The SQL account used by this MCP server should follow least-privilege principles
 - **Use a dedicated service account** — do not reuse accounts shared with other applications. A dedicated account makes it easy to audit activity and revoke access independently.
 - **Restrict database access** — if the account should only query specific databases, grant access only to those databases. Three-part name queries (`OtherDb.dbo.Table`) are allowed by design, so database-level permissions are the control point.
 - **Consider Resource Governor** — for production SQL Server instances, place the service account in a Resource Governor workload group with CPU and memory limits to prevent expensive queries from impacting other workloads.
+
+### Known Risks
+
+- This project is built using the official Microsoft [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) which is still a preview release
+- The data returned from a SQL Server query could include malicious prompt injection targetting AIs, this is a risk of all AI use and cannot be mitigated by this project, please ensure you're following best practices for AI security in your AI implementation and only connecting to trusted data sources.
 
 ## Architecture
 
