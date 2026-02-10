@@ -1,19 +1,21 @@
-# SQL Server MCP for DBAs
+# SQL Server MCP — Safe, Read-Only Database Access for AI Assistants
 
-A .NET MCP (Model Context Protocol) server that gives AI assistants safe, read-only access to SQL Server databases. Includes integrated DBA diagnostic tooling from the First Responder Kit, DarlingData, and sp_WhoIsActive.
+A .NET MCP (Model Context Protocol) server that gives AI assistants safe, read-only access to SQL Server databases. Every query is validated at the AST level using Microsoft's official T-SQL parser — not regex — so keyword-in-string tricks and comment-based bypasses don't work. Supports multiple server connections and ships with integrated DBA diagnostic tooling from the First Responder Kit, DarlingData, and sp_WhoIsActive.
 
 ## Features
 
-- **Read-only by design** — only SELECT and CTE queries are permitted
-- **AST-based query validation** — uses the official Microsoft T-SQL parser ([ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom)) to validate queries at the syntax tree level, not with regex
-- **Multi-server support** — configure named connections to multiple SQL Server instances
-- **ER diagram generation** — produces PlantUML diagrams with smart cardinality detection
-- **Table documentation** — generates detailed Markdown descriptions of table structure, indexes, and constraints
-- **Query plan analysis** — retrieve estimated or actual XML execution plans for SELECT queries
-- **DBA diagnostic tooling** — optional integration with industry-standard SQL Server diagnostic tools:
-  - [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit) — The sp_Blitz tools - health checks, performance diagnostics, index analysis, deadlock investigation
-  - [DarlingData toolkit](https://github.com/erikdarling/DarlingData) — CPU/memory pressure detection, Query Store analysis, error log search, blocking analysis
-  - [sp_WhoIsActive](http://whoisactive.com/) — real-time session and query monitoring
+**Security**
+- Read-only by design — only SELECT and CTE queries are permitted
+- AST-based query validation using [ScriptDom](https://www.nuget.org/packages/Microsoft.SqlServer.TransactSql.ScriptDom) (not regex)
+- Parameter blocking on all diagnostic stored procedures to prevent writes
+- Concurrency and throughput rate limiting
+
+**Database tooling**
+- Multi-server support — named connections to multiple SQL Server instances
+- ER diagram generation — PlantUML diagrams with smart cardinality detection
+- Table documentation — Markdown descriptions of columns, indexes, and constraints
+- Query plan analysis — estimated or actual XML execution plans
+- DBA diagnostics — optional integration with First Responder Kit, DarlingData, and sp_WhoIsActive
 
 ## Prerequisites
 
@@ -49,6 +51,8 @@ cp SqlServerMcp/appsettings.example.json SqlServerMcp/appsettings.json
     },
     "MaxRows": 1000,
     "CommandTimeoutSeconds": 30,
+    "MaxConcurrentQueries": 5,
+    "MaxQueriesPerMinute": 60,
     "EnableDbaTools": false
   }
 }
@@ -59,9 +63,11 @@ cp SqlServerMcp/appsettings.example.json SqlServerMcp/appsettings.json
 | `Servers` | — | Named SQL Server connections (name → connection string) |
 | `MaxRows` | 1000 | Maximum rows returned per query |
 | `CommandTimeoutSeconds` | 30 | SQL command timeout for all queries and procedures |
+| `MaxConcurrentQueries` | 5 | Maximum number of SQL queries that can execute concurrently |
+| `MaxQueriesPerMinute` | 60 | Maximum queries allowed per minute (token bucket rate limit) |
 | `EnableDbaTools` | false | Enable DBA diagnostic tools (First Responder Kit, DarlingData, sp_WhoIsActive) |
 
-> **Security Note:** `appsettings.json` is gitignored to prevent accidental credential commits. See the [Connection Security](#connection-security-and-credential-management) section for recommended authentication methods including Windows Authentication, Azure Managed Identity, and secure credential storage options.
+> **Security Note:** `appsettings.json` is gitignored to prevent accidental credential commits. See [SECURITY.md](SECURITY.md) for recommended authentication methods including Windows Authentication, Azure Managed Identity, and secure credential storage options.
 
 ## Build & Run
 
@@ -78,24 +84,7 @@ dotnet test
 
 ## MCP Client Setup
 
-### Claude Desktop
-
-Add to your Claude Desktop configuration (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "sqlserver": {
-      "command": "dotnet",
-      "args": ["run", "--project", "/path/to/SqlServerMcp"]
-    }
-  }
-}
-```
-
-### Claude Code
-
-Add to your Claude Code MCP settings:
+Add to your MCP client configuration (works for both Claude Desktop and Claude Code):
 
 ```json
 {
@@ -114,71 +103,56 @@ The server exposes 20 tools: 5 core tools that are always available, and 15 DBA 
 
 ### Core Tools
 
-#### `list_servers`
-
-Lists the available SQL Server instances configured in `appsettings.json`. Call this first to discover server names.
-
-#### `list_databases`
-
-Lists all databases on a named server, returning database names, IDs, states, and creation dates.
-
-#### `read_data`
-
-Executes a read-only SQL SELECT query against a specific database. Only `SELECT` and `WITH` (CTE) queries are allowed. Results are returned as JSON with a configurable row limit.
-
-#### `get_diagram`
-
-Generates a PlantUML ER diagram for a database showing tables, columns, primary keys, and foreign key relationships. Supports optional schema filtering and a configurable table limit (max 200).
-
-#### `describe_table`
-
-Returns comprehensive metadata about a single table in Markdown format, including columns with data types, nullability, defaults, identity properties, computed expressions, indexes, foreign keys, check constraints, and default constraints.
+| Tool | Description |
+|------|-------------|
+| `list_servers` | Lists available SQL Server instances configured in `appsettings.json`. Call this first to discover server names. |
+| `list_databases` | Lists all databases on a named server with names, IDs, states, and creation dates. |
+| `read_data` | Executes a read-only SQL SELECT query against a specific database. Only `SELECT` and `WITH` (CTE) queries are allowed. Results returned as JSON with a configurable row limit. |
+| `get_diagram` | Generates a PlantUML ER diagram showing tables, columns, primary keys, and foreign key relationships. Supports schema filtering and a configurable table limit (max 200). |
+| `describe_table` | Returns comprehensive table metadata in Markdown: columns with data types, nullability, defaults, identity, computed expressions, indexes, foreign keys, and constraints. |
 
 ### DBA Tools (requires `EnableDbaTools: true`)
 
 #### Query Analysis
 
-**`get_query_plan`** — Returns the estimated or actual XML execution plan for a SELECT query. Estimated plans show the optimizer's plan without executing. Actual plans execute the query and include runtime statistics. Uses the same query validation as `read_data`.
+| Tool | Description |
+|------|-------------|
+| `get_query_plan` | Returns the estimated or actual XML execution plan for a SELECT query. Estimated plans show the optimizer's plan without executing; actual plans include runtime statistics. |
 
 #### First Responder Kit
 
 Requires the [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit) to be installed on the target server.
 
-**`sp_blitz`** — Overall SQL Server health check. Returns prioritized findings including performance, configuration, and security issues.
-
-**`sp_blitz_first`** — Real-time performance diagnostics. Samples DMVs over an interval to identify current bottlenecks including waits, file latency, and perfmon counters.
-
-**`sp_blitz_cache`** — Plan cache analysis. Identifies top queries by CPU, reads, duration, executions, or memory grants.
-
-**`sp_blitz_index`** — Index analysis and tuning recommendations. Identifies missing, unused, and duplicate indexes with usage patterns.
-
-**`sp_blitz_who`** — Active query monitor. Enhanced replacement for `sp_who`/`sp_who2` showing what's running now, with blocking info, tempdb usage, and query plans.
-
-**`sp_blitz_lock`** — Deadlock analysis from the `system_health` extended event session. Shows deadlock victims, resources, and participating queries.
+| Tool | Description |
+|------|-------------|
+| `sp_blitz` | Overall SQL Server health check. Returns prioritized findings for performance, configuration, and security issues. |
+| `sp_blitz_first` | Real-time performance diagnostics. Samples DMVs over an interval to identify current bottlenecks including waits, file latency, and perfmon counters. |
+| `sp_blitz_cache` | Plan cache analysis. Identifies top queries by CPU, reads, duration, executions, or memory grants. |
+| `sp_blitz_index` | Index analysis and tuning. Identifies missing, unused, and duplicate indexes with usage patterns. |
+| `sp_blitz_who` | Active query monitor. Enhanced `sp_who`/`sp_who2` replacement showing what's running, with blocking info, tempdb usage, and query plans. |
+| `sp_blitz_lock` | Deadlock analysis from the `system_health` extended event session. Shows victims, resources, and participating queries. |
 
 #### DarlingData
 
 Requires the [DarlingData toolkit](https://github.com/erikdarling/DarlingData) to be installed on the target server.
 
-**`sp_pressure_detector`** — Diagnoses CPU and memory pressure. Identifies resource bottlenecks, high-CPU queries, memory grants, and disk latency.
-
-**`sp_quickie_store`** — Query Store analysis. Identifies top resource-consuming queries, plan regressions, and wait statistics from Query Store.
-
-**`sp_health_parser`** — Parses the `system_health` extended event session for historical diagnostics including waits, disk latency, CPU utilization, memory pressure, and locking events.
-
-**`sp_log_hunter`** — Searches SQL Server error logs for errors, warnings, and custom messages.
-
-**`sp_human_events_block_viewer`** — Analyzes blocking events captured by `sp_HumanEvents` extended event sessions. Shows blocking chains, lock details, and wait information.
-
-**`sp_index_cleanup`** — Finds unused and duplicate indexes that are candidates for removal. Analyzes index usage statistics to identify indexes with low reads and high write overhead.
-
-**`sp_query_repro_builder`** — Generates reproduction scripts for Query Store queries. Creates executable scripts with parameter values to reproduce query performance issues.
+| Tool | Description |
+|------|-------------|
+| `sp_pressure_detector` | Diagnoses CPU and memory pressure. Identifies resource bottlenecks, high-CPU queries, memory grants, and disk latency. |
+| `sp_quickie_store` | Query Store analysis. Identifies top resource-consuming queries, plan regressions, and wait statistics. |
+| `sp_health_parser` | Parses the `system_health` extended event session for historical diagnostics including waits, disk latency, CPU, memory, and locking events. |
+| `sp_log_hunter` | Searches SQL Server error logs for errors, warnings, and custom messages. |
+| `sp_human_events_block_viewer` | Analyzes blocking events captured by `sp_HumanEvents` sessions. Shows blocking chains, lock details, and wait information. |
+| `sp_index_cleanup` | Finds unused and duplicate indexes that are candidates for removal based on usage statistics. |
+| `sp_query_repro_builder` | Generates reproduction scripts for Query Store queries with parameter values to reproduce performance issues. |
 
 #### sp_WhoIsActive
 
 Requires [sp_WhoIsActive](http://whoisactive.com/) to be installed on the target server.
 
-**`sp_whoisactive`** — Monitors currently active sessions and queries. Shows running queries with wait info, blocking details, tempdb usage, and resource consumption.
+| Tool | Description |
+|------|-------------|
+| `sp_whoisactive` | Monitors currently active sessions and queries with wait info, blocking details, tempdb usage, and resource consumption. |
 
 ## Security
 
@@ -208,103 +182,31 @@ The DBA diagnostic tools (First Responder Kit, DarlingData, sp_WhoIsActive) exec
 
 Each service also enforces a procedure whitelist — only the specific procedures listed above can be executed.
 
-### Connection Security and Credential Management
+### Rate Limiting
 
-**Recommended: Use Windows Authentication or Azure Managed Identity**
+All tool executions are subject to rate limiting to prevent runaway queries from overwhelming the SQL Server:
 
-The most secure authentication methods avoid storing credentials in configuration files entirely:
+- **Concurrency limiting** — at most `MaxConcurrentQueries` (default 5) queries execute simultaneously. Additional requests queue up to a limit, then are rejected.
+- **Throughput limiting** — at most `MaxQueriesPerMinute` (default 60) queries are allowed per minute using a token bucket algorithm. Excess requests are rejected immediately.
 
-**Windows Authentication (on-premises or domain-joined environments):**
-```json
-{
-  "SqlServerMcp": {
-    "Servers": {
-      "production": {
-        "ConnectionString": "Server=myserver;Database=master;Integrated Security=True;TrustServerCertificate=False;Encrypt=True;"
-      }
-    }
-  }
-}
-```
+Both limits apply across all tools (ad-hoc queries and stored procedure executions). Rejected requests return an error message asking the caller to wait and retry.
 
-**Azure Managed Identity (Azure SQL Database):**
-```json
-{
-  "SqlServerMcp": {
-    "Servers": {
-      "azure-prod": {
-        "ConnectionString": "Server=myserver.database.windows.net;Database=master;Authentication=Active Directory Managed Identity;TrustServerCertificate=False;Encrypt=True;"
-      }
-    }
-  }
-}
-```
+### Connection Security
 
-**If SQL Authentication is Required:**
+Use Windows Authentication or Azure Managed Identity where possible to avoid storing credentials in configuration files. When SQL Authentication is required, use .NET's environment variable overrides (`__` separator) to inject credentials at runtime rather than storing passwords in `appsettings.json`. See [SECURITY.md](SECURITY.md) for detailed guidance including credential store integrations and connection string encryption.
 
-When Windows Authentication or Managed Identity are not available, follow these practices:
+### SQL Server Account
 
-1. **Never commit credentials to source control** — `appsettings.json` is already gitignored, but ensure you never commit credentials in example files or documentation
-
-2. **Use .NET configuration environment variable overrides** — .NET's `IConfiguration` system supports overriding any config value via environment variables using the `__` (double-underscore) separator. This is the recommended approach for injecting credentials without putting them in config files:
-
-   Start with a connection string template in `appsettings.json` (no password):
-   ```json
-   {
-     "SqlServerMcp": {
-       "Servers": {
-         "production": {
-           "ConnectionString": "Server=myserver;Database=master;User Id=sqlreader;Encrypt=True;TrustServerCertificate=False;"
-         }
-       }
-     }
-   }
-   ```
-
-   Then override the full connection string (including the password) via an environment variable:
-   ```bash
-   export SqlServerMcp__Servers__production__ConnectionString="Server=myserver;Database=master;User Id=sqlreader;Password=your-secure-password;Encrypt=True;TrustServerCertificate=False;"
-   dotnet run --project SqlServerMcp
-   ```
-
-   > **Note:** Some MCP clients (e.g., Claude Desktop) support `${ENV_VAR}` substitution syntax in their own configuration files, but this is **not a .NET feature** — .NET's `IConfiguration` system does not resolve `${...}` placeholders in values. Do not rely on this syntax in `appsettings.json`. Use the `__` environment variable override pattern shown above, or inject credentials through your MCP client's own environment variable support.
-
-3. **Use secure credential stores:**
-   - **Azure Key Vault** — for Azure deployments, integrate with `Azure.Extensions.AspNetCore.Configuration.Secrets`
-   - **AWS Secrets Manager** — for AWS deployments, use the AWS SDK to retrieve secrets
-   - **HashiCorp Vault** — for on-premises, use Vault for centralized secrets management
-   - **Windows Credential Manager** — for local development on Windows
-
-4. **Rotate credentials regularly** — if using SQL authentication, implement a credential rotation policy (e.g., every 90 days)
-
-5. **Use strong passwords** — if SQL authentication is required, use passwords with:
-   - Minimum 16 characters
-   - Mix of uppercase, lowercase, numbers, and special characters
-   - Generated randomly (not dictionary words or patterns)
-
-**Connection String Encryption:**
-
-Always use encrypted connections to protect credentials in transit:
-- Set `Encrypt=True` in all connection strings
-- Use `TrustServerCertificate=False` for production (only use `True` for development with self-signed certificates)
-- Ensure SQL Server has a valid SSL/TLS certificate from a trusted CA
-
-### SQL Server Account Recommendations
-
-The SQL account used by this MCP server should follow least-privilege principles:
-
-- **Grant read-only access** — the account only needs `SELECT` permission on the databases and schemas it should access. Do not grant `db_datawriter`, `db_ddladmin`, or server-level roles like `sysadmin`.
-- **Do not grant EXECUTE on unsafe CLR assemblies** — `SELECT` statements can call user-defined functions, including CLR functions. If a CLR assembly is registered with `EXTERNAL_ACCESS` or `UNSAFE` permission sets, it can perform file I/O, network calls, and other side effects when invoked from a SELECT. The service account should not have EXECUTE permission on any such assemblies.
-- **Use a dedicated service account** — do not reuse accounts shared with other applications. A dedicated account makes it easy to audit activity and revoke access independently.
-- **Restrict database access** — if the account should only query specific databases, grant access only to those databases. Three-part name queries (`OtherDb.dbo.Table`) are allowed by design, so database-level permissions are the control point.
-- **Consider Resource Governor** — for production SQL Server instances, place the service account in a Resource Governor workload group with CPU and memory limits to prevent expensive queries from impacting other workloads.
+The SQL account should follow least-privilege principles: grant only `SELECT` permission, use a dedicated service account, and restrict database access to only what's needed. See [SECURITY.md](SECURITY.md) for the full recommendations including CLR assembly and Resource Governor guidance.
 
 ### Known Risks
 
 - This project depends on the official Microsoft [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) (`ModelContextProtocol` NuGet package) which is currently a prerelease version. Prerelease packages may contain undiscovered security vulnerabilities and receive breaking changes. As the MCP framework handles all protocol I/O, any vulnerability in it directly affects this application's security boundary. Monitor the package for stable releases and upgrade when available.
-- The data returned from a SQL Server query could include malicious prompt injection targetting AIs, this is a risk of all AI use and cannot be mitigated by this project, please ensure you're following best practices for AI security in your AI implementation and only connecting to trusted data sources.
+- The data returned from a SQL Server query could include malicious prompt injection targeting AIs, this is a risk of all AI use and cannot be mitigated by this project, please ensure you're following best practices for AI security in your AI implementation and only connecting to trusted data sources.
 
 ## Architecture
+
+*This section is primarily for contributors.*
 
 The project follows a **two-layer design**: Tools → Services.
 
