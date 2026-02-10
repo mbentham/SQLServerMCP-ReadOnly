@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class IndexCleanupTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public IndexCleanupTool(IDarlingDataService darlingDataService)
+    public IndexCleanupTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -43,7 +45,7 @@ public sealed class IndexCleanupTool
         bool? getAllDatabases = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteIndexCleanupAsync(
                 serverName, databaseName, schemaName, tableName,
                 minReads, minWrites, minSizeGb, minRows,

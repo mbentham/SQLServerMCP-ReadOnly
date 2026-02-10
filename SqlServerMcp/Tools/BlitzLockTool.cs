@@ -9,10 +9,12 @@ namespace SqlServerMcp.Tools;
 public sealed class BlitzLockTool
 {
     private readonly IFirstResponderService _frkService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public BlitzLockTool(IFirstResponderService frkService)
+    public BlitzLockTool(IFirstResponderService frkService, IRateLimitingService rateLimiter)
     {
         _frkService = frkService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -63,7 +65,7 @@ public sealed class BlitzLockTool
             parsedEnd = e;
         }
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzLockAsync(
                 serverName, databaseName, parsedStart, parsedEnd,
                 objectName, storedProcName, appName, hostName,

@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using SqlServerMcp.Services;
 
 namespace SqlServerMcp.Tools;
 
@@ -8,14 +9,13 @@ namespace SqlServerMcp.Tools;
 internal static class ToolHelper
 {
     /// <summary>
-    /// Executes an async tool operation with standardized exception handling.
+    /// Executes an async tool operation with rate limiting and standardized exception handling.
+    /// Acquires a rate limit lease before executing, and releases the concurrency slot on completion.
     /// Converts ArgumentException and InvalidOperationException to McpException.
     /// </summary>
-    /// <param name="operation">The async operation to execute.</param>
-    /// <returns>The result of the operation.</returns>
-    /// <exception cref="McpException">Thrown when the operation fails with ArgumentException or InvalidOperationException.</exception>
-    public static async Task<string> ExecuteAsync(Func<Task<string>> operation)
+    public static async Task<string> ExecuteAsync(IRateLimitingService rateLimiter, Func<Task<string>> operation)
     {
+        using var lease = await rateLimiter.AcquireAsync(default);
         try
         {
             return await operation();

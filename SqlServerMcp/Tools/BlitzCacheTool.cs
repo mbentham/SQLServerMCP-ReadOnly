@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class BlitzCacheTool
 {
     private readonly IFirstResponderService _frkService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public BlitzCacheTool(IFirstResponderService frkService)
+    public BlitzCacheTool(IFirstResponderService frkService, IRateLimitingService rateLimiter)
     {
         _frkService = frkService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -40,7 +42,7 @@ public sealed class BlitzCacheTool
         if (top.HasValue)
             top = Math.Clamp(top.Value, 1, 100);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzCacheAsync(
                 serverName, sortOrder, top, expertMode, databaseName,
                 slowlySearchPlansFor, exportToExcel, cancellationToken));

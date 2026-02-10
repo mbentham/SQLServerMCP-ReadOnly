@@ -37,6 +37,12 @@ public sealed class SqlServerMcpOptionsValidator : IValidateOptions<SqlServerMcp
         if (options.CommandTimeoutSeconds < 1 || options.CommandTimeoutSeconds > 600)
             errors.Add($"CommandTimeoutSeconds must be between 1 and 600 (got {options.CommandTimeoutSeconds}).");
 
+        if (options.MaxConcurrentQueries < 1 || options.MaxConcurrentQueries > 100)
+            errors.Add($"MaxConcurrentQueries must be between 1 and 100 (got {options.MaxConcurrentQueries}).");
+
+        if (options.MaxQueriesPerMinute < 1 || options.MaxQueriesPerMinute > 10_000)
+            errors.Add($"MaxQueriesPerMinute must be between 1 and 10,000 (got {options.MaxQueriesPerMinute}).");
+
         return errors.Count > 0
             ? ValidateOptionsResult.Fail(errors)
             : ValidateOptionsResult.Success;

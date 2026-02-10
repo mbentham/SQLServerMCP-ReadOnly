@@ -41,7 +41,8 @@ public sealed class SqlServerService : ISqlServerService
         if (validationError is not null)
             throw new InvalidOperationException(validationError);
 
-        _logger.LogInformation("Executing query on server {Server} database {Database}: {Query}", serverName, databaseName, query);
+        _logger.LogInformation("Executing query on server {Server} database {Database} ({QueryLength} chars)", serverName, databaseName, query.Length);
+        _logger.LogDebug("Query text: {Query}", query);
 
         // Execute query
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
@@ -148,7 +149,8 @@ public sealed class SqlServerService : ISqlServerService
         if (validationError is not null)
             throw new InvalidOperationException(validationError);
 
-        _logger.LogInformation("Getting estimated plan on server {Server} database {Database}: {Query}", serverName, databaseName, query);
+        _logger.LogInformation("Getting estimated plan on server {Server} database {Database} ({QueryLength} chars)", serverName, databaseName, query.Length);
+        _logger.LogDebug("Query text: {Query}", query);
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);
@@ -210,7 +212,8 @@ public sealed class SqlServerService : ISqlServerService
         if (validationError is not null)
             throw new InvalidOperationException(validationError);
 
-        _logger.LogInformation("Getting actual plan on server {Server} database {Database}: {Query}", serverName, databaseName, query);
+        _logger.LogInformation("Getting actual plan on server {Server} database {Database} ({QueryLength} chars)", serverName, databaseName, query.Length);
+        _logger.LogDebug("Query text: {Query}", query);
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);

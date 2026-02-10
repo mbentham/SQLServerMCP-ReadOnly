@@ -246,25 +246,28 @@ When Windows Authentication or Managed Identity are not available, follow these 
 
 1. **Never commit credentials to source control** — `appsettings.json` is already gitignored, but ensure you never commit credentials in example files or documentation
 
-2. **Use environment variables or secrets management:**
+2. **Use .NET configuration environment variable overrides** — .NET's `IConfiguration` system supports overriding any config value via environment variables using the `__` (double-underscore) separator. This is the recommended approach for injecting credentials without putting them in config files:
 
+   Start with a connection string template in `appsettings.json` (no password):
    ```json
    {
      "SqlServerMcp": {
        "Servers": {
          "production": {
-           "ConnectionString": "Server=myserver;Database=master;User Id=sa;Password=${SQL_PASSWORD};Encrypt=True;TrustServerCertificate=False;"
+           "ConnectionString": "Server=myserver;Database=master;User Id=sqlreader;Encrypt=True;TrustServerCertificate=False;"
          }
        }
      }
    }
    ```
 
-   Then set the environment variable before running:
+   Then override the full connection string (including the password) via an environment variable:
    ```bash
-   export SQL_PASSWORD="your-secure-password"
+   export SqlServerMcp__Servers__production__ConnectionString="Server=myserver;Database=master;User Id=sqlreader;Password=your-secure-password;Encrypt=True;TrustServerCertificate=False;"
    dotnet run --project SqlServerMcp
    ```
+
+   > **Note:** Some MCP clients (e.g., Claude Desktop) support `${ENV_VAR}` substitution syntax in their own configuration files, but this is **not a .NET feature** — .NET's `IConfiguration` system does not resolve `${...}` placeholders in values. Do not rely on this syntax in `appsettings.json`. Use the `__` environment variable override pattern shown above, or inject credentials through your MCP client's own environment variable support.
 
 3. **Use secure credential stores:**
    - **Azure Key Vault** — for Azure deployments, integrate with `Azure.Extensions.AspNetCore.Configuration.Secrets`
@@ -298,7 +301,7 @@ The SQL account used by this MCP server should follow least-privilege principles
 
 ### Known Risks
 
-- This project is built using the official Microsoft [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) which is still a preview release
+- This project depends on the official Microsoft [MCP C# SDK](https://github.com/modelcontextprotocol/csharp-sdk) (`ModelContextProtocol` NuGet package) which is currently a prerelease version. Prerelease packages may contain undiscovered security vulnerabilities and receive breaking changes. As the MCP framework handles all protocol I/O, any vulnerability in it directly affects this application's security boundary. Monitor the package for stable releases and upgrade when available.
 - The data returned from a SQL Server query could include malicious prompt injection targetting AIs, this is a risk of all AI use and cannot be mitigated by this project, please ensure you're following best practices for AI security in your AI implementation and only connecting to trusted data sources.
 
 ## Architecture

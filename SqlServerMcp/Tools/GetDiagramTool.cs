@@ -9,10 +9,12 @@ namespace SqlServerMcp.Tools;
 public sealed class GetDiagramTool
 {
     private readonly IDiagramService _diagramService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public GetDiagramTool(IDiagramService diagramService)
+    public GetDiagramTool(IDiagramService diagramService, IRateLimitingService rateLimiter)
     {
         _diagramService = diagramService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -30,7 +32,7 @@ public sealed class GetDiagramTool
     {
         maxTables = Math.Clamp(maxTables, 1, 200);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _diagramService.GenerateDiagramAsync(
                 serverName, databaseName, schemaFilter, maxTables, cancellationToken));
     }

@@ -158,6 +158,64 @@ public class SqlServerMcpOptionsValidatorTests
     }
 
     // ───────────────────────────────────────────────
+    // MaxConcurrentQueries
+    // ───────────────────────────────────────────────
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    [InlineData(-1, false)]
+    public void MaxConcurrentQueries_Boundaries(int value, bool shouldSucceed)
+    {
+        var options = new SqlServerMcpOptions
+        {
+            Servers = new Dictionary<string, SqlServerConnection>
+            {
+                ["test"] = new() { ConnectionString = "Server=localhost;" }
+            },
+            MaxRows = 1000,
+            CommandTimeoutSeconds = 30,
+            MaxConcurrentQueries = value,
+            MaxQueriesPerMinute = 60
+        };
+
+        var result = _validator.Validate(null, options);
+
+        Assert.Equal(shouldSucceed, result.Succeeded);
+    }
+
+    // ───────────────────────────────────────────────
+    // MaxQueriesPerMinute
+    // ───────────────────────────────────────────────
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(10_000, true)]
+    [InlineData(10_001, false)]
+    [InlineData(-1, false)]
+    public void MaxQueriesPerMinute_Boundaries(int value, bool shouldSucceed)
+    {
+        var options = new SqlServerMcpOptions
+        {
+            Servers = new Dictionary<string, SqlServerConnection>
+            {
+                ["test"] = new() { ConnectionString = "Server=localhost;" }
+            },
+            MaxRows = 1000,
+            CommandTimeoutSeconds = 30,
+            MaxConcurrentQueries = 5,
+            MaxQueriesPerMinute = value
+        };
+
+        var result = _validator.Validate(null, options);
+
+        Assert.Equal(shouldSucceed, result.Succeeded);
+    }
+
+    // ───────────────────────────────────────────────
     // Multiple errors accumulated
     // ───────────────────────────────────────────────
 

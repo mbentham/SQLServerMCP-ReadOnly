@@ -11,7 +11,7 @@ public class BlitzLockToolTests
 
     public BlitzLockToolTests()
     {
-        _tool = new BlitzLockTool(_stub);
+        _tool = new BlitzLockTool(_stub, new NoOpRateLimiter());
     }
 
     [Fact]

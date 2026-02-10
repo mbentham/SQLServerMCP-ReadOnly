@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class LogHunterTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public LogHunterTool(IDarlingDataService darlingDataService)
+    public LogHunterTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -37,7 +39,7 @@ public sealed class LogHunterTool
         bool? firstLogOnly = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteLogHunterAsync(
                 serverName, daysBack, startDate, endDate,
                 customMessage, customMessageOnly, firstLogOnly, cancellationToken));

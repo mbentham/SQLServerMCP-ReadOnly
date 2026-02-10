@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class BlitzTool
 {
     private readonly IFirstResponderService _frkService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public BlitzTool(IFirstResponderService frkService)
+    public BlitzTool(IFirstResponderService frkService, IRateLimitingService rateLimiter)
     {
         _frkService = frkService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -33,7 +35,7 @@ public sealed class BlitzTool
         bool? bringThePain = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzAsync(
                 serverName, checkUserDatabaseObjects, checkServerInfo,
                 ignorePrioritiesAbove, bringThePain, cancellationToken));

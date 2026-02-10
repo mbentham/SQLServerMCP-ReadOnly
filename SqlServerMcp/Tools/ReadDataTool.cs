@@ -9,10 +9,12 @@ namespace SqlServerMcp.Tools;
 public sealed class ReadDataTool
 {
     private readonly ISqlServerService _sqlServerService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public ReadDataTool(ISqlServerService sqlServerService)
+    public ReadDataTool(ISqlServerService sqlServerService, IRateLimitingService rateLimiter)
     {
         _sqlServerService = sqlServerService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -27,7 +29,7 @@ public sealed class ReadDataTool
         [Description("Name of the database to query (use list_databases to see available databases)")] string databaseName,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _sqlServerService.ExecuteQueryAsync(serverName, databaseName, query, cancellationToken));
     }
 }

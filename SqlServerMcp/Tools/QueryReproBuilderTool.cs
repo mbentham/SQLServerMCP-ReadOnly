@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class QueryReproBuilderTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public QueryReproBuilderTool(IDarlingDataService darlingDataService)
+    public QueryReproBuilderTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -47,7 +49,7 @@ public sealed class QueryReproBuilderTool
         string? queryTextSearchNot = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteQueryReproBuilderAsync(
                 serverName, databaseName, startDate, endDate,
                 includePlanIds, includeQueryIds, ignorePlanIds, ignoreQueryIds,

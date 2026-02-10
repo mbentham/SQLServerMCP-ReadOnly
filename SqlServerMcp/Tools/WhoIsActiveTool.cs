@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class WhoIsActiveTool
 {
     private readonly IWhoIsActiveService _whoIsActiveService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public WhoIsActiveTool(IWhoIsActiveService whoIsActiveService)
+    public WhoIsActiveTool(IWhoIsActiveService whoIsActiveService, IRateLimitingService rateLimiter)
     {
         _whoIsActiveService = whoIsActiveService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -68,7 +70,7 @@ public sealed class WhoIsActiveTool
         if (deltaInterval.HasValue)
             deltaInterval = Math.Clamp(deltaInterval.Value, 0, 15);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _whoIsActiveService.ExecuteWhoIsActiveAsync(
                 serverName, filter, filterType, notFilter, notFilterType,
                 showOwnSpid, showSystemSpids, showSleepingSpids,

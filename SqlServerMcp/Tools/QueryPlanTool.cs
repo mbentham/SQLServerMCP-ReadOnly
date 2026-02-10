@@ -9,10 +9,12 @@ namespace SqlServerMcp.Tools;
 public sealed class QueryPlanTool
 {
     private readonly ISqlServerService _sqlServerService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public QueryPlanTool(ISqlServerService sqlServerService)
+    public QueryPlanTool(ISqlServerService sqlServerService, IRateLimitingService rateLimiter)
     {
         _sqlServerService = sqlServerService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -38,7 +40,7 @@ public sealed class QueryPlanTool
             throw new McpException($"Invalid planType '{planType}'. Must be 'estimated' or 'actual'.");
         }
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             planType.Equals("actual", StringComparison.OrdinalIgnoreCase)
                 ? _sqlServerService.GetActualPlanAsync(serverName, databaseName, query, cancellationToken)
                 : _sqlServerService.GetEstimatedPlanAsync(serverName, databaseName, query, cancellationToken));

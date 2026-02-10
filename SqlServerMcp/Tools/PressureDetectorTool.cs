@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class PressureDetectorTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public PressureDetectorTool(IDarlingDataService darlingDataService)
+    public PressureDetectorTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -48,7 +50,7 @@ public sealed class PressureDetectorTool
         if (sampleSeconds.HasValue)
             sampleSeconds = Math.Clamp(sampleSeconds.Value, 0, 10);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecutePressureDetectorAsync(
                 serverName, whatToCheck, skipQueries, skipPlanXml,
                 minimumDiskLatencyMs, cpuUtilizationThreshold, skipWaits,

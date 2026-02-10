@@ -20,6 +20,7 @@ builder.Services.Configure<SqlServerMcpOptions>(
 builder.Services.AddSingleton<IValidateOptions<SqlServerMcpOptions>, SqlServerMcpOptionsValidator>();
 
 // Register services
+builder.Services.AddSingleton<IRateLimitingService, RateLimitingService>();
 builder.Services.AddSingleton<ISqlServerService, SqlServerService>();
 builder.Services.AddSingleton<IDiagramService, DiagramService>();
 builder.Services.AddSingleton<ITableDescribeService, TableDescribeService>();

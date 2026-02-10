@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class DescribeTableTool
 {
     private readonly ITableDescribeService _tableDescribeService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public DescribeTableTool(ITableDescribeService tableDescribeService)
+    public DescribeTableTool(ITableDescribeService tableDescribeService, IRateLimitingService rateLimiter)
     {
         _tableDescribeService = tableDescribeService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -27,7 +29,7 @@ public sealed class DescribeTableTool
         [Description("Schema name (default 'dbo')")] string schemaName = "dbo",
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _tableDescribeService.DescribeTableAsync(
                 serverName, databaseName, schemaName, tableName, cancellationToken));
     }

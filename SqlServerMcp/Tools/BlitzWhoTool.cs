@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class BlitzWhoTool
 {
     private readonly IFirstResponderService _frkService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public BlitzWhoTool(IFirstResponderService frkService)
+    public BlitzWhoTool(IFirstResponderService frkService, IRateLimitingService rateLimiter)
     {
         _frkService = frkService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -45,7 +47,7 @@ public sealed class BlitzWhoTool
         string? sortOrder = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzWhoAsync(
                 serverName, expertMode, showSleepingSpids,
                 minElapsedSeconds, minCpuTime, minLogicalReads,

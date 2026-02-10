@@ -409,6 +409,6 @@ public sealed partial class DiagramService : IDiagramService
     [GeneratedRegex(@"[.\s\-]")]
     private static partial Regex AliasRegex();
 
-    [GeneratedRegex(@"[\r\n@""{}]")]
+    [GeneratedRegex(@"[\r\n@""{}!]")]
     private static partial Regex PlantUmlUnsafeChars();
 }

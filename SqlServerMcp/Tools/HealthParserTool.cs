@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class HealthParserTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public HealthParserTool(IDarlingDataService darlingDataService)
+    public HealthParserTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -43,7 +45,7 @@ public sealed class HealthParserTool
         int? pendingTaskThreshold = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteHealthParserAsync(
                 serverName, whatToCheck, startDate, endDate, warningsOnly,
                 databaseName, waitDurationMs, waitRoundIntervalMinutes,

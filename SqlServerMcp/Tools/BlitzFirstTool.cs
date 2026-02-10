@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class BlitzFirstTool
 {
     private readonly IFirstResponderService _frkService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public BlitzFirstTool(IFirstResponderService frkService)
+    public BlitzFirstTool(IFirstResponderService frkService, IRateLimitingService rateLimiter)
     {
         _frkService = frkService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -38,7 +40,7 @@ public sealed class BlitzFirstTool
         if (seconds.HasValue)
             seconds = Math.Clamp(seconds.Value, 1, 60);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzFirstAsync(
                 serverName, seconds, expertMode, showSleepingSpids,
                 sinceStartup, fileLatencyThresholdMs, cancellationToken));

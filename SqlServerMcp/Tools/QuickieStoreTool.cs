@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class QuickieStoreTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public QuickieStoreTool(IDarlingDataService darlingDataService)
+    public QuickieStoreTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -68,7 +70,7 @@ public sealed class QuickieStoreTool
         if (top.HasValue)
             top = Math.Clamp(top.Value, 1, 100);
 
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteQuickieStoreAsync(
                 serverName, databaseName, sortOrder, top, startDate, endDate,
                 executionCount, durationMs, procedureSchema, procedureName,

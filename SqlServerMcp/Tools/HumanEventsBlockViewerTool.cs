@@ -8,10 +8,12 @@ namespace SqlServerMcp.Tools;
 public sealed class HumanEventsBlockViewerTool
 {
     private readonly IDarlingDataService _darlingDataService;
+    private readonly IRateLimitingService _rateLimiter;
 
-    public HumanEventsBlockViewerTool(IDarlingDataService darlingDataService)
+    public HumanEventsBlockViewerTool(IDarlingDataService darlingDataService, IRateLimitingService rateLimiter)
     {
         _darlingDataService = darlingDataService;
+        _rateLimiter = rateLimiter;
     }
 
     [McpServerTool(
@@ -39,7 +41,7 @@ public sealed class HumanEventsBlockViewerTool
         int? maxBlockingEvents = null,
         CancellationToken cancellationToken = default)
     {
-        return await ToolHelper.ExecuteAsync(() =>
+        return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteHumanEventsBlockViewerAsync(
                 serverName, sessionName, targetType, startDate, endDate,
                 databaseName, objectName, maxBlockingEvents, cancellationToken));

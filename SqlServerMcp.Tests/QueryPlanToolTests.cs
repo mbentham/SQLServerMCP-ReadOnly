@@ -11,7 +11,7 @@ public class QueryPlanToolTests
 
     public QueryPlanToolTests()
     {
-        _tool = new QueryPlanTool(_stub);
+        _tool = new QueryPlanTool(_stub, new NoOpRateLimiter());
     }
 
     [Fact]
