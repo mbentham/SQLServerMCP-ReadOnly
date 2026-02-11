@@ -25,11 +25,11 @@ A .NET MCP (Model Context Protocol) server that gives AI assistants safe, read-o
 
 **Optional (for DBA tools):**
 
-The following must be installed on the target SQL Server instances to use the corresponding tools. They are only needed if you enable `EnableDbaTools`.
+Each toolkit is enabled independently — install only what you need:
 
-- [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit) — for `sp_blitz`, `sp_blitz_first`, `sp_blitz_cache`, `sp_blitz_index`, `sp_blitz_who`, `sp_blitz_lock`
-- [DarlingData toolkit](https://github.com/erikdarling/DarlingData) — for `sp_pressure_detector`, `sp_quickie_store`, `sp_health_parser`, `sp_log_hunter`, `sp_human_events_block_viewer`, `sp_index_cleanup`, `sp_query_repro_builder`
-- [sp_WhoIsActive](http://whoisactive.com/) — for `sp_whoisactive`
+- [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit) (`EnableFirstResponderKit`) — for `sp_blitz`, `sp_blitz_first`, `sp_blitz_cache`, `sp_blitz_index`, `sp_blitz_who`, `sp_blitz_lock`
+- [DarlingData toolkit](https://github.com/erikdarling/DarlingData) (`EnableDarlingData`) — for `sp_pressure_detector`, `sp_quickie_store`, `sp_health_parser`, `sp_log_hunter`, `sp_human_events_block_viewer`, `sp_index_cleanup`, `sp_query_repro_builder`
+- [sp_WhoIsActive](http://whoisactive.com/) (`EnableWhoIsActive`) — for `sp_whoisactive`
 
 ## Configuration
 
@@ -53,7 +53,9 @@ cp SqlServerMcp/appsettings.example.json SqlServerMcp/appsettings.json
     "CommandTimeoutSeconds": 30,
     "MaxConcurrentQueries": 5,
     "MaxQueriesPerMinute": 60,
-    "EnableDbaTools": false
+    "EnableFirstResponderKit": false,
+    "EnableDarlingData": false,
+    "EnableWhoIsActive": false
   }
 }
 ```
@@ -65,7 +67,9 @@ cp SqlServerMcp/appsettings.example.json SqlServerMcp/appsettings.json
 | `CommandTimeoutSeconds` | 30 | SQL command timeout for all queries and procedures |
 | `MaxConcurrentQueries` | 5 | Maximum number of SQL queries that can execute concurrently |
 | `MaxQueriesPerMinute` | 60 | Maximum queries allowed per minute (token bucket rate limit) |
-| `EnableDbaTools` | false | Enable DBA diagnostic tools (First Responder Kit, DarlingData, sp_WhoIsActive) |
+| `EnableFirstResponderKit` | false | Enable First Responder Kit diagnostic tools (sp_Blitz, sp_BlitzFirst, sp_BlitzCache, sp_BlitzIndex, sp_BlitzWho, sp_BlitzLock) |
+| `EnableDarlingData` | false | Enable DarlingData diagnostic tools (sp_PressureDetector, sp_QuickieStore, sp_HealthParser, sp_LogHunter, sp_HumanEventsBlockViewer, sp_IndexCleanup, sp_QueryReproBuilder) |
+| `EnableWhoIsActive` | false | Enable sp_WhoIsActive session monitoring |
 
 > **Security Note:** `appsettings.json` is gitignored to prevent accidental credential commits. See [SECURITY.md](SECURITY.md) for recommended authentication methods including Windows Authentication, Azure Managed Identity, and secure credential storage options.
 
@@ -99,7 +103,7 @@ Add to your MCP client configuration (works for both Claude Desktop and Claude C
 
 ## Tools
 
-The server exposes 21 tools: 6 core tools that are always available, and 15 DBA tools that require `EnableDbaTools: true`.
+The server exposes 21 tools: 7 core tools that are always available, and 14 optional DBA tools controlled by three independent flags.
 
 ### Core Tools
 
@@ -111,16 +115,9 @@ The server exposes 21 tools: 6 core tools that are always available, and 15 DBA 
 | `get_schema_overview` | Returns a concise Markdown overview of the database schema: tables, columns with data types, primary keys, foreign key references, unique constraints, check constraints, and defaults. Designed for loading database context into an AI conversation. |
 | `get_plantuml_diagram` | Generates a PlantUML ER diagram and saves it to a specified file path. Shows tables, columns, primary keys, and foreign key relationships. Supports schema filtering and a configurable table limit (max 200). |
 | `describe_table` | Returns comprehensive table metadata in Markdown: columns with data types, nullability, defaults, identity, computed expressions, indexes, foreign keys, and constraints. |
-
-### DBA Tools (requires `EnableDbaTools: true`)
-
-#### Query Analysis
-
-| Tool | Description |
-|------|-------------|
 | `get_query_plan` | Returns the estimated or actual XML execution plan for a SELECT query. Estimated plans show the optimizer's plan without executing; actual plans include runtime statistics. |
 
-#### First Responder Kit
+### First Responder Kit (requires `EnableFirstResponderKit: true`)
 
 Requires the [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit) to be installed on the target server.
 
@@ -133,7 +130,7 @@ Requires the [First Responder Kit](https://github.com/BrentOzarULTD/SQL-Server-F
 | `sp_blitz_who` | Active query monitor. Enhanced `sp_who`/`sp_who2` replacement showing what's running, with blocking info, tempdb usage, and query plans. |
 | `sp_blitz_lock` | Deadlock analysis from the `system_health` extended event session. Shows victims, resources, and participating queries. |
 
-#### DarlingData
+### DarlingData (requires `EnableDarlingData: true`)
 
 Requires the [DarlingData toolkit](https://github.com/erikdarling/DarlingData) to be installed on the target server.
 
@@ -147,7 +144,7 @@ Requires the [DarlingData toolkit](https://github.com/erikdarling/DarlingData) t
 | `sp_index_cleanup` | Finds unused and duplicate indexes that are candidates for removal based on usage statistics. |
 | `sp_query_repro_builder` | Generates reproduction scripts for Query Store queries with parameter values to reproduce performance issues. |
 
-#### sp_WhoIsActive
+### sp_WhoIsActive (requires `EnableWhoIsActive: true`)
 
 Requires [sp_WhoIsActive](http://whoisactive.com/) to be installed on the target server.
 

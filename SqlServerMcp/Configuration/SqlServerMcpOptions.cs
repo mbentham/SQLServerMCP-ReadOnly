@@ -7,5 +7,7 @@ public sealed class SqlServerMcpOptions
     public int CommandTimeoutSeconds { get; init; } = 30;
     public int MaxConcurrentQueries { get; init; } = 5;
     public int MaxQueriesPerMinute { get; init; } = 60;
-    public bool EnableDbaTools { get; init; }
+    public bool EnableFirstResponderKit { get; init; }
+    public bool EnableDarlingData { get; init; }
+    public bool EnableWhoIsActive { get; init; }
 }

@@ -29,6 +29,12 @@ public class DiagramServiceHelperTests
     }
 
     [Fact]
+    public void SanitizePlantUmlText_RemovesExclamationMark()
+    {
+        Assert.Equal("include /etc/passwd", DiagramService.SanitizePlantUmlText("!include /etc/passwd"));
+    }
+
+    [Fact]
     public void SanitizePlantUmlText_PlainText_Unchanged()
     {
         Assert.Equal("NormalText_123", DiagramService.SanitizePlantUmlText("NormalText_123"));
@@ -421,5 +427,24 @@ public class DiagramServiceHelperTests
         // dbo schema should be omitted from display name but included in alias
         Assert.Contains("entity \"Orders\" as dbo_Orders", result);
         Assert.DoesNotContain("entity \"dbo.Orders\"", result);
+    }
+
+    // ───────────────────────────────────────────────
+    // Table with no columns
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildPlantUml_TableWithNoColumns_RendersEmptyEntity()
+    {
+        var tables = new List<TableInfo> { new("dbo", "EmptyTable") };
+        var columns = new List<ColumnInfo>();
+        var fks = new List<ForeignKeyInfo>();
+
+        var result = DiagramService.BuildPlantUml("srv", "db", null, 10, tables, columns, fks);
+
+        Assert.Contains("entity \"EmptyTable\" as dbo_EmptyTable {", result);
+        Assert.Contains("}", result);
+        // Should not contain separator or column lines
+        Assert.DoesNotContain("<<PK>>", result);
     }
 }

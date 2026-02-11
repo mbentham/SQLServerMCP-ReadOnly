@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using SqlServerMcp.Configuration;
+using Microsoft.Extensions.Configuration;
 using SqlServerMcp.Services;
 
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
@@ -29,15 +30,21 @@ builder.Services.AddSingleton<ISqlServerService, SqlServerService>();
 builder.Services.AddSingleton<IDiagramService, DiagramService>();
 builder.Services.AddSingleton<ISchemaOverviewService, SchemaOverviewService>();
 builder.Services.AddSingleton<ITableDescribeService, TableDescribeService>();
-builder.Services.AddSingleton<IFirstResponderService, FirstResponderService>();
-builder.Services.AddSingleton<IDarlingDataService, DarlingDataService>();
-builder.Services.AddSingleton<IWhoIsActiveService, WhoIsActiveService>();
+// Read tool flags directly from configuration (needed before DI container is built)
+static bool ReadBoolFlag(IConfiguration config, string key)
+    => bool.TryParse(config[$"SqlServerMcp:{key}"], out var value) && value;
 
-// Read EnableDbaTools directly from configuration (needed before DI container is built)
-var enableDbaTools = string.Equals(
-    builder.Configuration["SqlServerMcp:EnableDbaTools"],
-    "true",
-    StringComparison.OrdinalIgnoreCase);
+var enableFirstResponderKit = ReadBoolFlag(builder.Configuration, "EnableFirstResponderKit");
+var enableDarlingData = ReadBoolFlag(builder.Configuration, "EnableDarlingData");
+var enableWhoIsActive = ReadBoolFlag(builder.Configuration, "EnableWhoIsActive");
+
+// Register DBA services only when their toolkit is enabled
+if (enableFirstResponderKit)
+    builder.Services.AddSingleton<IFirstResponderService, FirstResponderService>();
+if (enableDarlingData)
+    builder.Services.AddSingleton<IDarlingDataService, DarlingDataService>();
+if (enableWhoIsActive)
+    builder.Services.AddSingleton<IWhoIsActiveService, WhoIsActiveService>();
 
 // Configure MCP server with appropriate tool set
 builder.Services
@@ -50,7 +57,7 @@ builder.Services
         };
     })
     .WithStdioServerTransport()
-    .WithTools(ToolRegistry.GetToolTypes(enableDbaTools));
+    .WithTools(ToolRegistry.GetToolTypes(enableFirstResponderKit, enableDarlingData, enableWhoIsActive));
 
 var host = builder.Build();
 

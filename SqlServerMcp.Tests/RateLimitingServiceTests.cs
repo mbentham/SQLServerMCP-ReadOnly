@@ -92,4 +92,32 @@ public class RateLimitingServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => service.AcquireAsync(cts.Token));
     }
+
+    [Fact]
+    public async Task AcquireAsync_ConcurrencyExhausted_ThrowsInvalidOperation()
+    {
+        // maxConcurrent=1 → PermitLimit=1, QueueLimit=2
+        using var service = new RateLimitingService(MakeOptions(maxConcurrent: 1, maxPerMinute: 100));
+        using var cts = new CancellationTokenSource();
+
+        // Hold the only concurrency slot
+        var lease = await service.AcquireAsync(CancellationToken.None);
+
+        // Fill the queue (QueueLimit = maxConcurrent * 2 = 2)
+        var queued1 = service.AcquireAsync(cts.Token);
+        var queued2 = service.AcquireAsync(cts.Token);
+
+        // Next request should be rejected (queue full)
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.AcquireAsync(CancellationToken.None));
+
+        Assert.Contains("Too many concurrent queries", ex.Message);
+
+        // Cleanup: cancel queued tasks and release the lease
+        cts.Cancel();
+        lease.Dispose();
+
+        try { await queued1; } catch (OperationCanceledException) { }
+        try { await queued2; } catch (OperationCanceledException) { }
+    }
 }

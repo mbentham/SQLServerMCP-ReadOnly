@@ -1,9 +1,155 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using SqlServerMcp.Configuration;
 using SqlServerMcp.Services;
 
 namespace SqlServerMcp.Tests;
 
 public class StoredProcedureServiceBaseTests
 {
+    /// <summary>
+    /// Concrete subclass that exposes protected members for testing.
+    /// </summary>
+    private sealed class TestableService : StoredProcedureServiceBase
+    {
+        public TestableService(
+            IOptions<SqlServerMcpOptions> options,
+            HashSet<string> allowedProcedures,
+            string[] blockedParameters)
+            : base(options, NullLogger.Instance, allowedProcedures, blockedParameters,
+                "blocked for testing", "procedure not found message")
+        {
+        }
+
+        public Task<string> CallExecuteProcedureAsync(
+            string serverName, string procedureName,
+            Dictionary<string, object?> parameters, CancellationToken ct)
+            => ExecuteProcedureAsync(serverName, procedureName, parameters, ct);
+
+        public static void CallAddBoolParam(Dictionary<string, object?> p, string name, bool? value)
+            => AddBoolParam(p, name, value);
+
+        public static void CallAddIfNotNull(Dictionary<string, object?> p, string name, object? value)
+            => AddIfNotNull(p, name, value);
+    }
+
+    private static IOptions<SqlServerMcpOptions> MakeOptions() =>
+        Options.Create(new SqlServerMcpOptions
+        {
+            Servers = new Dictionary<string, SqlServerConnection>
+            {
+                ["testserver"] = new() { ConnectionString = "Server=localhost;" }
+            }
+        });
+
+    // ───────────────────────────────────────────────
+    // ExecuteProcedureAsync — whitelist enforcement
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteProcedureAsync_NonWhitelistedProcedure_ThrowsInvalidOperation()
+    {
+        var service = new TestableService(
+            MakeOptions(),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sp_Allowed" },
+            []);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CallExecuteProcedureAsync("testserver", "sp_Evil",
+                new Dictionary<string, object?>(), CancellationToken.None));
+
+        Assert.Contains("sp_Evil", ex.Message);
+        Assert.Contains("not in the allowed list", ex.Message);
+    }
+
+    // ───────────────────────────────────────────────
+    // ExecuteProcedureAsync — blocked parameter enforcement
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteProcedureAsync_BlockedParameter_ThrowsInvalidOperation()
+    {
+        var service = new TestableService(
+            MakeOptions(),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sp_Allowed" },
+            ["@OutputTableName"]);
+
+        var parameters = new Dictionary<string, object?> { ["@OutputTableName"] = "HackerTable" };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CallExecuteProcedureAsync("testserver", "sp_Allowed",
+                parameters, CancellationToken.None));
+
+        Assert.Contains("@OutputTableName", ex.Message);
+        Assert.Contains("not allowed", ex.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteProcedureAsync_BlockedParameterCaseInsensitive_ThrowsInvalidOperation()
+    {
+        var service = new TestableService(
+            MakeOptions(),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sp_Allowed" },
+            ["@OutputTableName"]);
+
+        var parameters = new Dictionary<string, object?> { ["@OUTPUTTABLENAME"] = "HackerTable" };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CallExecuteProcedureAsync("testserver", "sp_Allowed",
+                parameters, CancellationToken.None));
+
+        Assert.Contains("not allowed", ex.Message);
+    }
+
+    // ───────────────────────────────────────────────
+    // AddBoolParam
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void AddBoolParam_True_MapsTo1()
+    {
+        var p = new Dictionary<string, object?>();
+        TestableService.CallAddBoolParam(p, "@Flag", true);
+        Assert.Equal(1, p["@Flag"]);
+    }
+
+    [Fact]
+    public void AddBoolParam_False_MapsTo0()
+    {
+        var p = new Dictionary<string, object?>();
+        TestableService.CallAddBoolParam(p, "@Flag", false);
+        Assert.Equal(0, p["@Flag"]);
+    }
+
+    [Fact]
+    public void AddBoolParam_Null_AddsNothing()
+    {
+        var p = new Dictionary<string, object?>();
+        TestableService.CallAddBoolParam(p, "@Flag", null);
+        Assert.Empty(p);
+    }
+
+    // ───────────────────────────────────────────────
+    // AddIfNotNull
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void AddIfNotNull_WithValue_AddsParameter()
+    {
+        var p = new Dictionary<string, object?>();
+        TestableService.CallAddIfNotNull(p, "@Name", "test");
+        Assert.Equal("test", p["@Name"]);
+    }
+
+    [Fact]
+    public void AddIfNotNull_WithNull_AddsNothing()
+    {
+        var p = new Dictionary<string, object?>();
+        TestableService.CallAddIfNotNull(p, "@Name", null);
+        Assert.Empty(p);
+    }
+
     // ───────────────────────────────────────────────
     // FormatValue — DateTime
     // ───────────────────────────────────────────────

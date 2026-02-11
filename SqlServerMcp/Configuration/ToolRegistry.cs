@@ -9,25 +9,24 @@ internal static class ToolRegistry
         typeof(ListServersTool),
         typeof(ListDatabasesTool),
         typeof(ReadDataTool),
+        typeof(QueryPlanTool),
         typeof(GetPlantUMLDiagramTool),
         typeof(GetSchemaOverviewTool),
         typeof(DescribeTableTool),
     ];
 
-    internal static readonly Type[] DbaTools =
+    internal static readonly Type[] FirstResponderKitTools =
     [
-        // Table / query analysis
-        typeof(QueryPlanTool),
-
-        // First Responder Kit
         typeof(BlitzTool),
         typeof(BlitzFirstTool),
         typeof(BlitzCacheTool),
         typeof(BlitzIndexTool),
         typeof(BlitzWhoTool),
         typeof(BlitzLockTool),
+    ];
 
-        // DarlingData
+    internal static readonly Type[] DarlingDataTools =
+    [
         typeof(PressureDetectorTool),
         typeof(QuickieStoreTool),
         typeof(HealthParserTool),
@@ -35,16 +34,25 @@ internal static class ToolRegistry
         typeof(HumanEventsBlockViewerTool),
         typeof(IndexCleanupTool),
         typeof(QueryReproBuilderTool),
+    ];
 
-        // sp_WhoIsActive
+    internal static readonly Type[] WhoIsActiveTools =
+    [
         typeof(WhoIsActiveTool),
     ];
 
-    internal static IEnumerable<Type> GetToolTypes(bool enableDbaTools)
+    internal static IEnumerable<Type> GetToolTypes(
+        bool enableFirstResponderKit, bool enableDarlingData, bool enableWhoIsActive)
     {
-        if (enableDbaTools)
-            return CoreTools.Concat(DbaTools);
+        IEnumerable<Type> tools = CoreTools;
 
-        return CoreTools;
+        if (enableFirstResponderKit)
+            tools = tools.Concat(FirstResponderKitTools);
+        if (enableDarlingData)
+            tools = tools.Concat(DarlingDataTools);
+        if (enableWhoIsActive)
+            tools = tools.Concat(WhoIsActiveTools);
+
+        return tools;
     }
 }
