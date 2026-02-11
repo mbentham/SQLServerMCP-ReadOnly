@@ -71,10 +71,12 @@ When Windows Authentication or Managed Identity are not available, follow these 
 
 4. **Rotate credentials regularly** — if using SQL authentication, implement a credential rotation policy (e.g., every 90 days)
 
-5. **Use strong passwords** — if SQL authentication is required, use passwords with:
-   - Minimum 16 characters
-   - Mix of uppercase, lowercase, numbers, and special characters
-   - Generated randomly (not dictionary words or patterns)
+5. **Use strong passwords** — if SQL authentication is required, follow [NIST SP 800-63B Rev 4](https://pages.nist.gov/800-63-4/sp800-63b.html) guidance:
+   - **Minimum 15 characters** — longer passwords are stronger than complex ones; allow up to at least 64 characters
+   - **No composition rules** — do not require uppercase, numbers, or special characters (NIST finds these reduce effective entropy by encouraging predictable substitutions)
+   - **Screen against blocklists** — reject passwords found in breach databases (e.g., Have I Been Pwned), common password lists, dictionary words, and context-specific terms (server names, usernames)
+   - **No periodic expiration** — only require password changes on evidence of compromise; forced rotation leads to weaker passwords
+   - **Use a password manager** — generate long, random passwords and store them securely
 
 **Connection String Encryption:**
 
