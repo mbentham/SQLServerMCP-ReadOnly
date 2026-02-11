@@ -13,6 +13,9 @@ public static class QueryValidator
         if (string.IsNullOrWhiteSpace(query))
             return "Query cannot be empty.";
 
+        if (query.Length > 1_000_000)
+            return "Query exceeds maximum allowed length (1,000,000 characters).";
+
         // Parse with the official T-SQL parser
         var parser = new TSql170Parser(initialQuotedIdentifiers: true);
         using var reader = new StringReader(query);

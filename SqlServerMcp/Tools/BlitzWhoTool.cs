@@ -52,6 +52,6 @@ public sealed class BlitzWhoTool
                 serverName, expertMode, showSleepingSpids,
                 minElapsedSeconds, minCpuTime, minLogicalReads,
                 minBlockingSeconds, minTempdbMb, showActualParameters,
-                getLiveQueryPlan, sortOrder, cancellationToken));
+                getLiveQueryPlan, sortOrder, cancellationToken), cancellationToken);
     }
 }

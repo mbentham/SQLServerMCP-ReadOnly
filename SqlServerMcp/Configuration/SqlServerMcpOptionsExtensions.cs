@@ -6,9 +6,8 @@ public static class SqlServerMcpOptionsExtensions
     {
         if (!options.Servers.TryGetValue(serverName, out var serverConfig))
         {
-            var available = string.Join(", ", options.Servers.Keys.OrderBy(k => k));
             throw new ArgumentException(
-                $"Server '{serverName}' not found. Available servers: {available}");
+                $"Server '{serverName}' not found. Use list_servers to see available names.");
         }
         return serverConfig;
     }

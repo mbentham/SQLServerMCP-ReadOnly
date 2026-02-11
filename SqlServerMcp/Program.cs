@@ -52,4 +52,32 @@ builder.Services
     .WithStdioServerTransport()
     .WithTools(ToolRegistry.GetToolTypes(enableDbaTools));
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Log startup warnings for security-relevant configuration
+var startupLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SqlServerMcp.Startup");
+var options = host.Services.GetRequiredService<IOptions<SqlServerMcpOptions>>().Value;
+
+foreach (var (serverName, connection) in options.Servers)
+{
+    if (string.IsNullOrWhiteSpace(connection.ConnectionString))
+        continue;
+
+    try
+    {
+        var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connection.ConnectionString);
+        if (!csb.Encrypt)
+            startupLogger.LogWarning("Server '{ServerName}': connection string has Encrypt=False. Traffic will not be encrypted.", serverName);
+        if (csb.TrustServerCertificate)
+            startupLogger.LogWarning("Server '{ServerName}': connection string has TrustServerCertificate=True. Server certificate will not be validated.", serverName);
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogWarning(ex, "Server '{ServerName}': could not parse connection string for security checks.", serverName);
+    }
+}
+
+if (options.MaxRows > 10_000)
+    startupLogger.LogWarning("MaxRows is set to {MaxRows}. Large values may produce very large JSON responses.", options.MaxRows);
+
+await host.RunAsync();

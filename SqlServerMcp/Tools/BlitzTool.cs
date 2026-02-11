@@ -38,6 +38,6 @@ public sealed class BlitzTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzAsync(
                 serverName, checkUserDatabaseObjects, checkServerInfo,
-                ignorePrioritiesAbove, bringThePain, cancellationToken));
+                ignorePrioritiesAbove, bringThePain, cancellationToken), cancellationToken);
     }
 }

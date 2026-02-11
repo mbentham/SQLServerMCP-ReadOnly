@@ -35,7 +35,7 @@ public sealed class GetPlantUMLDiagramTool
 
         var puml = await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _diagramService.GenerateDiagramAsync(
-                serverName, databaseName, schemaFilter, maxTables, cancellationToken));
+                serverName, databaseName, schemaFilter, maxTables, cancellationToken), cancellationToken);
 
         var fullPath = Path.GetFullPath(outputPath);
         var directory = Path.GetDirectoryName(fullPath);

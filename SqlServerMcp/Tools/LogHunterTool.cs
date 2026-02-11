@@ -42,6 +42,6 @@ public sealed class LogHunterTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteLogHunterAsync(
                 serverName, daysBack, startDate, endDate,
-                customMessage, customMessageOnly, firstLogOnly, cancellationToken));
+                customMessage, customMessageOnly, firstLogOnly, cancellationToken), cancellationToken);
     }
 }

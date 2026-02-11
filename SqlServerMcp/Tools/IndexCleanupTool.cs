@@ -49,6 +49,6 @@ public sealed class IndexCleanupTool
             _darlingDataService.ExecuteIndexCleanupAsync(
                 serverName, databaseName, schemaName, tableName,
                 minReads, minWrites, minSizeGb, minRows,
-                dedupeOnly, getAllDatabases, cancellationToken));
+                dedupeOnly, getAllDatabases, cancellationToken), cancellationToken);
     }
 }

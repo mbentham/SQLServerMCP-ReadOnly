@@ -616,4 +616,17 @@ public class QueryValidatorTests
         Assert.Null(QueryValidator.Validate(
             "WITH cte AS (SELECT 1 AS x UNION ALL SELECT x + 1 FROM cte WHERE x < 10) SELECT * FROM cte"));
     }
+
+    // ───────────────────────────────────────────────
+    // Query length limit
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void Validate_QueryExceedsMaxLength_ReturnsError()
+    {
+        var query = "SELECT " + new string('x', 1_000_001);
+        var result = QueryValidator.Validate(query);
+        Assert.NotNull(result);
+        Assert.Contains("maximum allowed length", result);
+    }
 }

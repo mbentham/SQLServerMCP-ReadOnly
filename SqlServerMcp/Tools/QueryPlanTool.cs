@@ -43,6 +43,6 @@ public sealed class QueryPlanTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             planType.Equals("actual", StringComparison.OrdinalIgnoreCase)
                 ? _sqlServerService.GetActualPlanAsync(serverName, databaseName, query, cancellationToken)
-                : _sqlServerService.GetEstimatedPlanAsync(serverName, databaseName, query, cancellationToken));
+                : _sqlServerService.GetEstimatedPlanAsync(serverName, databaseName, query, cancellationToken), cancellationToken);
     }
 }

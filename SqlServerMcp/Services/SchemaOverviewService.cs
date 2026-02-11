@@ -51,21 +51,21 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
             return $"No tables found in database '{databaseName}' on server '{serverName}'" +
                    (schemaFilter is not null ? $" (schema filter: '{schemaFilter}')" : "") + ".";
 
-        await CreateTableFilterAsync(connection, tables, "#overview_tables", _options.CommandTimeoutSeconds, cancellationToken);
-
-        var columns = await QueryColumnsAsync(connection, cancellationToken);
-        var foreignKeys = await QueryForeignKeysAsync(connection, cancellationToken);
-        var checkConstraints = await QueryCheckConstraintsAsync(connection, cancellationToken);
-        var uniqueColumns = await QueryUniqueColumnsAsync(connection, cancellationToken);
+        var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
+        var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
+        var checkConstraints = await QueryCheckConstraintsAsync(connection, tables, cancellationToken);
+        var uniqueColumns = await QueryUniqueColumnsAsync(connection, tables, cancellationToken);
 
         return BuildMarkdown(serverName, databaseName, schemaFilter, maxTables,
             tables, columns, foreignKeys, checkConstraints, uniqueColumns);
     }
 
     private async Task<List<ColumnInfo>> QueryColumnsAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
+        var sql = cteSql + """
             SELECT
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME,
@@ -79,7 +79,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
                 sc.is_identity AS IsIdentity,
                 dc.definition AS DefaultDefinition
             FROM INFORMATION_SCHEMA.COLUMNS c
-            INNER JOIN #overview_tables dt ON dt.SchemaName = c.TABLE_SCHEMA AND dt.TableName = c.TABLE_NAME
+            INNER JOIN table_filter dt ON dt.SchemaName = c.TABLE_SCHEMA AND dt.TableName = c.TABLE_NAME
             INNER JOIN sys.columns sc
                 ON sc.object_id = OBJECT_ID(QUOTENAME(c.TABLE_SCHEMA) + '.' + QUOTENAME(c.TABLE_NAME))
                 AND sc.name = c.COLUMN_NAME
@@ -99,6 +99,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -123,9 +124,11 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     }
 
     private async Task<List<ForeignKeyInfo>> QueryForeignKeysAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
+        var sql = cteSql + """
             SELECT
                 SCHEMA_NAME(fk_tab.schema_id) AS FkSchema,
                 fk_tab.name AS FkTable,
@@ -139,7 +142,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
             INNER JOIN sys.columns fk_col ON fk_col.object_id = fkc.parent_object_id AND fk_col.column_id = fkc.parent_column_id
             INNER JOIN sys.tables ref_tab ON ref_tab.object_id = fkc.referenced_object_id
             INNER JOIN sys.columns ref_col ON ref_col.object_id = fkc.referenced_object_id AND ref_col.column_id = fkc.referenced_column_id
-            INNER JOIN #overview_tables dt
+            INNER JOIN table_filter dt
                 ON dt.SchemaName = SCHEMA_NAME(fk_tab.schema_id) AND dt.TableName = fk_tab.name
             ORDER BY fk_tab.name, fk_col.name
             """;
@@ -148,6 +151,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -167,9 +171,11 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     }
 
     private async Task<List<CheckConstraintInfo>> QueryCheckConstraintsAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
+        var sql = cteSql + """
             SELECT
                 SCHEMA_NAME(t.schema_id) AS SchemaName,
                 t.name AS TableName,
@@ -177,7 +183,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
                 cc.definition AS Definition
             FROM sys.check_constraints cc
             INNER JOIN sys.tables t ON t.object_id = cc.parent_object_id
-            INNER JOIN #overview_tables dt
+            INNER JOIN table_filter dt
                 ON dt.SchemaName = SCHEMA_NAME(t.schema_id) AND dt.TableName = t.name
             LEFT JOIN sys.columns col
                 ON col.object_id = cc.parent_object_id AND col.column_id = cc.parent_column_id
@@ -189,6 +195,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -206,10 +213,12 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     }
 
     private async Task<List<UniqueColumnInfo>> QueryUniqueColumnsAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
         // Single-column unique constraints/indexes (excluding PKs)
-        const string sql = """
+        var sql = cteSql + """
             SELECT
                 SCHEMA_NAME(t.schema_id) AS SchemaName,
                 t.name AS TableName,
@@ -218,7 +227,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
             INNER JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
             INNER JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             INNER JOIN sys.tables t ON t.object_id = i.object_id
-            INNER JOIN #overview_tables dt
+            INNER JOIN table_filter dt
                 ON dt.SchemaName = SCHEMA_NAME(t.schema_id) AND dt.TableName = t.name
             WHERE i.is_unique = 1
               AND i.is_primary_key = 0
@@ -234,6 +243,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 

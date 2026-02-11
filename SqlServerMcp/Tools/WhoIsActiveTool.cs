@@ -77,6 +77,6 @@ public sealed class WhoIsActiveTool
                 getFullInnerText, getPlans, getOuterCommand, getTransactionInfo,
                 getTaskInfo, getLocks, getAvgTime, getAdditionalInfo,
                 getMemoryInfo, findBlockLeaders, deltaInterval, sortOrder,
-                formatOutput, cancellationToken));
+                formatOutput, cancellationToken), cancellationToken);
     }
 }

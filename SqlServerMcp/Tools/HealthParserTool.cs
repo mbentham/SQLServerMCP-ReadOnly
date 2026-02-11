@@ -49,6 +49,6 @@ public sealed class HealthParserTool
             _darlingDataService.ExecuteHealthParserAsync(
                 serverName, whatToCheck, startDate, endDate, warningsOnly,
                 databaseName, waitDurationMs, waitRoundIntervalMinutes,
-                skipLocks, pendingTaskThreshold, cancellationToken));
+                skipLocks, pendingTaskThreshold, cancellationToken), cancellationToken);
     }
 }

@@ -46,17 +46,18 @@ public sealed partial class DiagramService : IDiagramService
         if (tables.Count == 0)
             return GenerateEmptyDiagram(serverName, databaseName, schemaFilter);
 
-        await CreateTableFilterAsync(connection, tables, "#diagram_tables", _options.CommandTimeoutSeconds, cancellationToken);
-        var columns = await QueryColumnsAsync(connection, cancellationToken);
-        var foreignKeys = await QueryForeignKeysAsync(connection, cancellationToken);
+        var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
+        var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
 
         return BuildPlantUml(serverName, databaseName, schemaFilter, maxTables, tables, columns, foreignKeys);
     }
 
     private async Task<List<ColumnInfo>> QueryColumnsAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
+        var sql = cteSql + """
             SELECT
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME,
@@ -69,7 +70,7 @@ public sealed partial class DiagramService : IDiagramService
                 CASE WHEN ixc.column_id IS NOT NULL THEN 1 ELSE 0 END AS IsPrimaryKey,
                 sc.is_identity AS IsIdentity
             FROM INFORMATION_SCHEMA.COLUMNS c
-            INNER JOIN #diagram_tables dt ON dt.SchemaName = c.TABLE_SCHEMA AND dt.TableName = c.TABLE_NAME
+            INNER JOIN table_filter dt ON dt.SchemaName = c.TABLE_SCHEMA AND dt.TableName = c.TABLE_NAME
             INNER JOIN sys.columns sc
                 ON sc.object_id = OBJECT_ID(QUOTENAME(c.TABLE_SCHEMA) + '.' + QUOTENAME(c.TABLE_NAME))
                 AND sc.name = c.COLUMN_NAME
@@ -87,6 +88,7 @@ public sealed partial class DiagramService : IDiagramService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -110,9 +112,11 @@ public sealed partial class DiagramService : IDiagramService
     }
 
     private async Task<List<ForeignKeyInfo>> QueryForeignKeysAsync(SqlConnection connection,
-        CancellationToken cancellationToken)
+        List<TableInfo> tables, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var (cteSql, cteParams) = BuildTableFilterCte(tables);
+
+        var sql = cteSql + """
             SELECT
                 fk.name AS FkName,
                 SCHEMA_NAME(fk_tab.schema_id) AS FkSchema,
@@ -141,9 +145,9 @@ public sealed partial class DiagramService : IDiagramService
             INNER JOIN sys.tables ref_tab ON ref_tab.object_id = fkc.referenced_object_id
             INNER JOIN sys.columns ref_col ON ref_col.object_id = fkc.referenced_object_id AND ref_col.column_id = fkc.referenced_column_id
             INNER JOIN sys.columns sc ON sc.object_id = fkc.parent_object_id AND sc.column_id = fkc.parent_column_id
-            INNER JOIN #diagram_tables dt_fk
+            INNER JOIN table_filter dt_fk
                 ON dt_fk.SchemaName = SCHEMA_NAME(fk_tab.schema_id) AND dt_fk.TableName = fk_tab.name
-            INNER JOIN #diagram_tables dt_ref
+            INNER JOIN table_filter dt_ref
                 ON dt_ref.SchemaName = SCHEMA_NAME(ref_tab.schema_id) AND dt_ref.TableName = ref_tab.name
             ORDER BY fk.name, fkc.constraint_column_id
             """;
@@ -152,6 +156,7 @@ public sealed partial class DiagramService : IDiagramService
         {
             CommandTimeout = _options.CommandTimeoutSeconds
         };
+        cmd.Parameters.AddRange(cteParams);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 

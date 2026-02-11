@@ -54,6 +54,6 @@ public sealed class QueryReproBuilderTool
                 serverName, databaseName, startDate, endDate,
                 includePlanIds, includeQueryIds, ignorePlanIds, ignoreQueryIds,
                 procedureSchema, procedureName, queryTextSearch, queryTextSearchNot,
-                cancellationToken));
+                cancellationToken), cancellationToken);
     }
 }

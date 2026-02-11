@@ -44,6 +44,6 @@ public sealed class BlitzIndexTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzIndexAsync(
                 serverName, databaseName, schemaName, tableName,
-                getAllDatabases, mode, thresholdMb, filter, cancellationToken));
+                getAllDatabases, mode, thresholdMb, filter, cancellationToken), cancellationToken);
     }
 }

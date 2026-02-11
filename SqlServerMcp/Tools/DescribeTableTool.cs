@@ -31,6 +31,6 @@ public sealed class DescribeTableTool
     {
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _tableDescribeService.DescribeTableAsync(
-                serverName, databaseName, schemaName, tableName, cancellationToken));
+                serverName, databaseName, schemaName, tableName, cancellationToken), cancellationToken);
     }
 }

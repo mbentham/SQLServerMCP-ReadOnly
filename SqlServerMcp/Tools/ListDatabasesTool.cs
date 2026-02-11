@@ -28,6 +28,6 @@ public sealed class ListDatabasesTool
         CancellationToken cancellationToken = default)
     {
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
-            _sqlServerService.ListDatabasesAsync(serverName, cancellationToken));
+            _sqlServerService.ListDatabasesAsync(serverName, cancellationToken), cancellationToken);
     }
 }

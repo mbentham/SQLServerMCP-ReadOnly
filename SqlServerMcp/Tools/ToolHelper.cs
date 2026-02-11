@@ -13,9 +13,10 @@ internal static class ToolHelper
     /// Acquires a rate limit lease before executing, and releases the concurrency slot on completion.
     /// Converts ArgumentException and InvalidOperationException to McpException.
     /// </summary>
-    public static async Task<string> ExecuteAsync(IRateLimitingService rateLimiter, Func<Task<string>> operation)
+    public static async Task<string> ExecuteAsync(IRateLimitingService rateLimiter, Func<Task<string>> operation,
+        CancellationToken cancellationToken = default)
     {
-        using var lease = await rateLimiter.AcquireAsync(default);
+        using var lease = await rateLimiter.AcquireAsync(cancellationToken);
         try
         {
             return await operation();

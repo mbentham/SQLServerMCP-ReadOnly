@@ -34,6 +34,6 @@ public sealed class GetSchemaOverviewTool
 
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _schemaOverviewService.GenerateOverviewAsync(
-                serverName, databaseName, schemaFilter, maxTables, cancellationToken));
+                serverName, databaseName, schemaFilter, maxTables, cancellationToken), cancellationToken);
     }
 }

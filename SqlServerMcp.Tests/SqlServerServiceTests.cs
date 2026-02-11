@@ -110,7 +110,7 @@ public class SqlServerServiceTests
             _service.ExecuteQueryAsync("nonexistent", "master", "SELECT 1", CancellationToken.None));
 
         Assert.Contains("nonexistent", ex.Message);
-        Assert.Contains("testserver", ex.Message);
+        Assert.Contains("list_servers", ex.Message);
     }
 
     // ───────────────────────────────────────────────
@@ -168,6 +168,6 @@ public class SqlServerServiceTests
             _service.ListDatabasesAsync("nonexistent", CancellationToken.None));
 
         Assert.Contains("nonexistent", ex.Message);
-        Assert.Contains("testserver", ex.Message);
+        Assert.Contains("list_servers", ex.Message);
     }
 }

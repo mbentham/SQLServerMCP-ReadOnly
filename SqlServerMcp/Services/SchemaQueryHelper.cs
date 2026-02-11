@@ -59,52 +59,24 @@ internal static class SchemaQueryHelper
         return tables;
     }
 
-    internal static async Task CreateTableFilterAsync(SqlConnection connection,
-        List<TableInfo> tables, string tempTableName, int commandTimeoutSeconds,
-        CancellationToken cancellationToken)
+    internal static (string CteSql, SqlParameter[] Parameters) BuildTableFilterCte(List<TableInfo> tables)
     {
-        // Create temp table
-        await using var createCmd = new SqlCommand(
-            $"CREATE TABLE {tempTableName} (SchemaName sysname NOT NULL, TableName sysname NOT NULL);",
-            connection)
-        {
-            CommandTimeout = commandTimeoutSeconds
-        };
-        await createCmd.ExecuteNonQueryAsync(cancellationToken);
-
         if (tables.Count == 0)
-            return;
+            throw new ArgumentException("At least one table is required to build a filter CTE.", nameof(tables));
 
-        // Use multiple batched INSERT statements to avoid SQL Server's 2100 parameter limit
-        // Batch size of 500 means max 1000 parameters per batch (well under the 2100 limit)
-        const int batchSize = 500;
-        for (var batchStart = 0; batchStart < tables.Count; batchStart += batchSize)
+        var sb = new StringBuilder();
+        sb.Append("WITH table_filter AS (SELECT SchemaName, TableName FROM (VALUES ");
+
+        var parameters = new SqlParameter[tables.Count * 2];
+        for (var i = 0; i < tables.Count; i++)
         {
-            var batchEnd = Math.Min(batchStart + batchSize, tables.Count);
-            var batchCount = batchEnd - batchStart;
-
-            var sb = new StringBuilder();
-            sb.Append($"INSERT INTO {tempTableName} (SchemaName, TableName) VALUES ");
-
-            for (var i = 0; i < batchCount; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(CultureInfo.InvariantCulture, $"(@s{i}, @t{i})");
-            }
-
-            await using var insertCmd = new SqlCommand(sb.ToString(), connection)
-            {
-                CommandTimeout = commandTimeoutSeconds
-            };
-
-            for (var i = 0; i < batchCount; i++)
-            {
-                var table = tables[batchStart + i];
-                insertCmd.Parameters.AddWithValue($"@s{i}", table.Schema);
-                insertCmd.Parameters.AddWithValue($"@t{i}", table.Name);
-            }
-
-            await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+            if (i > 0) sb.Append(", ");
+            sb.Append(CultureInfo.InvariantCulture, $"(@s{i}, @t{i})");
+            parameters[i * 2] = new SqlParameter($"@s{i}", tables[i].Schema);
+            parameters[i * 2 + 1] = new SqlParameter($"@t{i}", tables[i].Name);
         }
+
+        sb.Append(") AS t(SchemaName, TableName)) ");
+        return (sb.ToString(), parameters);
     }
 }

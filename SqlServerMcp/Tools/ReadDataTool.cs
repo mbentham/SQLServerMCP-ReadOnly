@@ -30,6 +30,6 @@ public sealed class ReadDataTool
         CancellationToken cancellationToken = default)
     {
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
-            _sqlServerService.ExecuteQueryAsync(serverName, databaseName, query, cancellationToken));
+            _sqlServerService.ExecuteQueryAsync(serverName, databaseName, query, cancellationToken), cancellationToken);
     }
 }

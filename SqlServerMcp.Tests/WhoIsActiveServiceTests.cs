@@ -95,7 +95,7 @@ public class WhoIsActiveServiceTests
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
             _service.ExecuteWhoIsActiveAsync("nonexistent", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, CancellationToken.None));
         Assert.Contains("nonexistent", ex.Message);
-        Assert.Contains("testserver", ex.Message);
+        Assert.Contains("list_servers", ex.Message);
     }
 
     // ───────────────────────────────────────────────

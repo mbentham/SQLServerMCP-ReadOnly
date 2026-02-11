@@ -76,6 +76,6 @@ public sealed class QuickieStoreTool
                 executionCount, durationMs, procedureSchema, procedureName,
                 includeQueryIds, includeQueryHashes, ignorePlanIds, ignoreQueryIds,
                 queryTextSearch, queryTextSearchNot, waitFilter, queryType,
-                expertMode, formatOutput, getAllDatabases, cancellationToken));
+                expertMode, formatOutput, getAllDatabases, cancellationToken), cancellationToken);
     }
 }

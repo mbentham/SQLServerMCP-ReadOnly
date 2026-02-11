@@ -55,6 +55,6 @@ public sealed class PressureDetectorTool
                 serverName, whatToCheck, skipQueries, skipPlanXml,
                 minimumDiskLatencyMs, cpuUtilizationThreshold, skipWaits,
                 skipPerfmon, sampleSeconds, troubleshootBlocking, gimmeDanger,
-                cancellationToken));
+                cancellationToken), cancellationToken);
     }
 }

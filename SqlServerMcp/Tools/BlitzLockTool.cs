@@ -69,6 +69,6 @@ public sealed class BlitzLockTool
             _frkService.ExecuteBlitzLockAsync(
                 serverName, databaseName, parsedStart, parsedEnd,
                 objectName, storedProcName, appName, hostName,
-                loginName, victimsOnly, eventSessionName, cancellationToken));
+                loginName, victimsOnly, eventSessionName, cancellationToken), cancellationToken);
     }
 }

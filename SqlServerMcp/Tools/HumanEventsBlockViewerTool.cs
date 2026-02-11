@@ -44,6 +44,6 @@ public sealed class HumanEventsBlockViewerTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _darlingDataService.ExecuteHumanEventsBlockViewerAsync(
                 serverName, sessionName, targetType, startDate, endDate,
-                databaseName, objectName, maxBlockingEvents, cancellationToken));
+                databaseName, objectName, maxBlockingEvents, cancellationToken), cancellationToken);
     }
 }

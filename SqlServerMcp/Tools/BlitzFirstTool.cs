@@ -43,6 +43,6 @@ public sealed class BlitzFirstTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzFirstAsync(
                 serverName, seconds, expertMode, showSleepingSpids,
-                sinceStartup, fileLatencyThresholdMs, cancellationToken));
+                sinceStartup, fileLatencyThresholdMs, cancellationToken), cancellationToken);
     }
 }

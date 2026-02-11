@@ -45,6 +45,6 @@ public sealed class BlitzCacheTool
         return await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _frkService.ExecuteBlitzCacheAsync(
                 serverName, sortOrder, top, expertMode, databaseName,
-                slowlySearchPlansFor, exportToExcel, cancellationToken));
+                slowlySearchPlansFor, exportToExcel, cancellationToken), cancellationToken);
     }
 }
