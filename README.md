@@ -90,9 +90,31 @@ dotnet run --project SqlServerMcp
 # Publish (recommended for MCP client use)
 dotnet publish SqlServerMcp -c Release -o SqlServerMcp/publish
 
-# Run tests
+# Unit tests (no external dependencies)
+dotnet test SqlServerMcp.Tests
+
+# All tests including integration (requires Podman — see below)
+DOCKER_HOST=unix:///run/user/1000/podman/podman.sock \
+TESTCONTAINERS_RYUK_DISABLED=true \
 dotnet test
 ```
+
+### Integration Tests
+
+Integration tests use [Testcontainers](https://dotnet.testcontainers.org/) to run a SQL Server 2025 container via Podman (rootless). They test the core services (query execution, diagram generation, schema overview, table describe) against a real database.
+
+**Prerequisites:**
+- [Podman](https://podman.io/) installed
+- Podman user socket active: `systemctl --user start podman.socket`
+
+**Running:**
+```bash
+DOCKER_HOST=unix:///run/user/1000/podman/podman.sock \
+TESTCONTAINERS_RYUK_DISABLED=true \
+dotnet test SqlServerMcp.IntegrationTests
+```
+
+The first run pulls `mcr.microsoft.com/mssql/server:2025-latest` (~1.5 GB). Subsequent runs reuse the cached image and complete in ~15 seconds. Unit tests (`SqlServerMcp.Tests`) require no container runtime and always work with plain `dotnet test SqlServerMcp.Tests`.
 
 ## MCP Client Setup
 
