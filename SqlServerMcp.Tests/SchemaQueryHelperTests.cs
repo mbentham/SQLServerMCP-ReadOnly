@@ -86,4 +86,108 @@ public class SchemaQueryHelperTests
 
         Assert.EndsWith(") ", cteSql);
     }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — no filters
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_NoFilters_BaseQueryOnly()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery(null, null);
+
+        Assert.Contains("sys.tables", sql);
+        Assert.Contains("is_ms_shipped = 0", sql);
+        Assert.Contains("temporal_type <> 2", sql);
+        Assert.DoesNotContain("@includeSchema", sql);
+        Assert.DoesNotContain("NOT IN", sql);
+        Assert.Empty(parameters);
+    }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — includeSchema
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_IncludeSchema_AddsEqualityFilter()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery("dbo", null);
+
+        Assert.Contains("AND s.name = @includeSchema", sql);
+        Assert.Single(parameters);
+        Assert.Equal("@includeSchema", parameters[0].ParameterName);
+        Assert.Equal("dbo", parameters[0].Value);
+    }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — excludeSchemas
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_SingleExcludeSchema_AddsNotInWithOneParam()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery(null, ["audit"]);
+
+        Assert.Contains("AND s.name NOT IN (@excl0)", sql);
+        Assert.Single(parameters);
+        Assert.Equal("@excl0", parameters[0].ParameterName);
+        Assert.Equal("audit", parameters[0].Value);
+    }
+
+    [Fact]
+    public void BuildTableQuery_MultipleExcludeSchemas_AddsNotInWithAllParams()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery(null, ["audit", "staging", "temp"]);
+
+        Assert.Contains("AND s.name NOT IN (@excl0, @excl1, @excl2)", sql);
+        Assert.Equal(3, parameters.Count);
+        Assert.Equal("audit", parameters[0].Value);
+        Assert.Equal("staging", parameters[1].Value);
+        Assert.Equal("temp", parameters[2].Value);
+    }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — includeSchema takes precedence
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_BothIncludeAndExclude_IncludeWins()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery("dbo", ["audit", "staging"]);
+
+        Assert.Contains("AND s.name = @includeSchema", sql);
+        Assert.DoesNotContain("NOT IN", sql);
+        Assert.Single(parameters);
+        Assert.Equal("@includeSchema", parameters[0].ParameterName);
+    }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — empty excludeSchemas
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_EmptyExcludeList_NoFilter()
+    {
+        var (sql, parameters) = SchemaQueryHelper.BuildTableQuery(null, []);
+
+        Assert.DoesNotContain("NOT IN", sql);
+        Assert.DoesNotContain("@includeSchema", sql);
+        Assert.Empty(parameters);
+    }
+
+    // ───────────────────────────────────────────────
+    // BuildTableQuery — ORDER BY always present
+    // ───────────────────────────────────────────────
+
+    [Fact]
+    public void BuildTableQuery_AlwaysEndsWithOrderBy()
+    {
+        var (sql1, _) = SchemaQueryHelper.BuildTableQuery(null, null);
+        var (sql2, _) = SchemaQueryHelper.BuildTableQuery("dbo", null);
+        var (sql3, _) = SchemaQueryHelper.BuildTableQuery(null, ["audit"]);
+
+        Assert.EndsWith("ORDER BY s.name, t.name", sql1);
+        Assert.EndsWith("ORDER BY s.name, t.name", sql2);
+        Assert.EndsWith("ORDER BY s.name, t.name", sql3);
+    }
 }

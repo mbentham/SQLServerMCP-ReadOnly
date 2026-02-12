@@ -27,7 +27,8 @@ public sealed class GetPlantUMLDiagramTool
         [Description("Name of the SQL Server to query (use list_servers to see available names)")] string serverName,
         [Description("Name of the database to diagram (use list_databases to see available databases)")] string databaseName,
         [Description("File path to save the PlantUML diagram output (e.g. '/tmp/diagram.puml')")] string outputPath,
-        [Description("Optional schema name to filter tables (e.g. 'dbo'). If omitted, all user schemas are included.")] string? schemaFilter = null,
+        [Description("Optional schema name to include (e.g. 'dbo'). If specified, only tables in this schema are shown. Overrides excludeSchemas.")] string? includeSchema = null,
+        [Description("Optional comma-separated schema names to exclude (e.g. 'audit,staging'). Ignored when includeSchema is specified.")] string? excludeSchemas = null,
         [Description("Maximum number of tables to include (1-200, default 50)")] int maxTables = 50,
         CancellationToken cancellationToken = default)
     {
@@ -35,7 +36,8 @@ public sealed class GetPlantUMLDiagramTool
 
         var puml = await ToolHelper.ExecuteAsync(_rateLimiter, () =>
             _diagramService.GenerateDiagramAsync(
-                serverName, databaseName, schemaFilter, maxTables, cancellationToken), cancellationToken);
+                serverName, databaseName, includeSchema, ToolHelper.ParseExcludeSchemas(excludeSchemas),
+                maxTables, cancellationToken), cancellationToken);
 
         var fullPath = Path.GetFullPath(outputPath);
         var directory = Path.GetDirectoryName(fullPath);

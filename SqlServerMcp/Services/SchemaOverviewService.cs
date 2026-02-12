@@ -35,28 +35,29 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     internal sealed record UniqueColumnInfo(string Schema, string TableName, string ColumnName);
 
     public async Task<string> GenerateOverviewAsync(string serverName, string databaseName,
-        string? schemaFilter, int maxTables, CancellationToken cancellationToken)
+        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables, CancellationToken cancellationToken)
     {
         var serverConfig = _options.ResolveServer(serverName);
 
-        _logger.LogInformation("Generating schema overview on server {Server} database {Database} schema {Schema}",
-            serverName, databaseName, schemaFilter ?? "all");
+        _logger.LogInformation("Generating schema overview on server {Server} database {Database} schema {Schema} excluding {ExcludeSchemas}",
+            serverName, databaseName, includeSchema ?? "all",
+            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none");
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         await connection.ChangeDatabaseAsync(databaseName, cancellationToken);
 
-        var tables = await QueryTablesAsync(connection, schemaFilter, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
+        var tables = await QueryTablesAsync(connection, includeSchema, excludeSchemas, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
         if (tables.Count == 0)
             return $"No tables found in database '{databaseName}' on server '{serverName}'" +
-                   (schemaFilter is not null ? $" (schema filter: '{schemaFilter}')" : "") + ".";
+                   (includeSchema is not null ? $" (schema filter: '{includeSchema}')" : "") + ".";
 
         var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
         var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
         var checkConstraints = await QueryCheckConstraintsAsync(connection, tables, cancellationToken);
         var uniqueColumns = await QueryUniqueColumnsAsync(connection, tables, cancellationToken);
 
-        return BuildMarkdown(serverName, databaseName, schemaFilter, maxTables,
+        return BuildMarkdown(serverName, databaseName, includeSchema, maxTables,
             tables, columns, foreignKeys, checkConstraints, uniqueColumns);
     }
 
@@ -260,7 +261,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     }
 
     internal static string BuildMarkdown(string serverName, string databaseName,
-        string? schemaFilter, int maxTables, List<TableInfo> tables,
+        string? includeSchema, int maxTables, List<TableInfo> tables,
         List<ColumnInfo> columns, List<ForeignKeyInfo> foreignKeys,
         List<CheckConstraintInfo> checkConstraints, List<UniqueColumnInfo> uniqueColumns)
     {
@@ -287,7 +288,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         var sb = new StringBuilder();
         sb.AppendLine($"# Schema: {SanitizeMarkdownCell(databaseName)} on {SanitizeMarkdownCell(serverName)}");
         sb.AppendLine($"Tables: {tables.Count}" +
-                       (schemaFilter is not null ? $" | Schema: {SanitizeMarkdownCell(schemaFilter)}" : "") +
+                       (includeSchema is not null ? $" | Schema: {SanitizeMarkdownCell(includeSchema)}" : "") +
                        (tables.Count >= maxTables ? $" | **Truncated at {maxTables}**" : ""));
         sb.AppendLine();
 
