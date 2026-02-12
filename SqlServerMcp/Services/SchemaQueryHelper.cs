@@ -22,28 +22,52 @@ internal static class SchemaQueryHelper
         };
     }
 
-    internal static async Task<List<TableInfo>> QueryTablesAsync(SqlConnection connection,
-        string? schemaFilter, int maxTables, int commandTimeoutSeconds, CancellationToken cancellationToken)
+    internal static (string Sql, List<SqlParameter> Parameters) BuildTableQuery(
+        string? includeSchema, IReadOnlyList<string>? excludeSchemas)
     {
         var sql = new StringBuilder("""
-            SELECT TABLE_SCHEMA, TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE = 'BASE TABLE'
-              AND TABLE_SCHEMA NOT IN ('sys', 'INFORMATION_SCHEMA')
+            SELECT s.name AS SchemaName, t.name AS TableName
+            FROM sys.tables t
+            INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE t.is_ms_shipped = 0
+              AND t.temporal_type <> 2
             """);
 
-        if (schemaFilter is not null)
-            sql.Append(" AND TABLE_SCHEMA = @schemaFilter");
+        var parameters = new List<SqlParameter>();
 
-        sql.Append(" ORDER BY TABLE_SCHEMA, TABLE_NAME");
+        if (includeSchema is not null)
+        {
+            sql.Append(" AND s.name = @includeSchema");
+            parameters.Add(new SqlParameter("@includeSchema", includeSchema));
+        }
+        else if (excludeSchemas is { Count: > 0 })
+        {
+            for (var i = 0; i < excludeSchemas.Count; i++)
+            {
+                sql.Append(i == 0 ? " AND s.name NOT IN (" : ", ");
+                sql.Append(CultureInfo.InvariantCulture, $"@excl{i}");
+                parameters.Add(new SqlParameter($"@excl{i}", excludeSchemas[i]));
+            }
+            sql.Append(')');
+        }
 
-        await using var cmd = new SqlCommand(sql.ToString(), connection)
+        sql.Append(" ORDER BY s.name, t.name");
+        return (sql.ToString(), parameters);
+    }
+
+    internal static async Task<List<TableInfo>> QueryTablesAsync(SqlConnection connection,
+        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables, int commandTimeoutSeconds,
+        CancellationToken cancellationToken)
+    {
+        var (sql, parameters) = BuildTableQuery(includeSchema, excludeSchemas);
+
+        await using var cmd = new SqlCommand(sql, connection)
         {
             CommandTimeout = commandTimeoutSeconds
         };
 
-        if (schemaFilter is not null)
-            cmd.Parameters.AddWithValue("@schemaFilter", schemaFilter);
+        foreach (var p in parameters)
+            cmd.Parameters.Add(p);
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 

@@ -26,4 +26,22 @@ internal static class ToolHelper
             throw new McpException(ex.Message);
         }
     }
+
+    /// <summary>
+    /// Parses a comma-separated exclude-schemas string into a deduplicated list.
+    /// Returns null if the input is null, empty, or contains only whitespace/commas.
+    /// </summary>
+    public static IReadOnlyList<string>? ParseExcludeSchemas(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        var schemas = input.Split(',')
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return schemas.Count > 0 ? schemas : null;
+    }
 }

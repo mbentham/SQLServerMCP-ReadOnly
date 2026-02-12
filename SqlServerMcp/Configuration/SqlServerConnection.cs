@@ -2,5 +2,5 @@ namespace SqlServerMcp.Configuration;
 
 public sealed class SqlServerConnection
 {
-    public required string ConnectionString { get; init; }
+    public string ConnectionString { get; set; } = string.Empty;
 }

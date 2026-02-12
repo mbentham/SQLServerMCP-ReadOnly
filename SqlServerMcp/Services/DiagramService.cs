@@ -32,24 +32,26 @@ public sealed partial class DiagramService : IDiagramService
         bool IsNullable, bool IsUnique);
 
     public async Task<string> GenerateDiagramAsync(string serverName, string databaseName,
-        string? schemaFilter, int maxTables, CancellationToken cancellationToken)
+        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables, CancellationToken cancellationToken)
     {
         var serverConfig = _options.ResolveServer(serverName);
 
-        _logger.LogInformation("Generating diagram on server {Server} database {Database} schema {Schema}", serverName, databaseName, schemaFilter ?? "all");
+        _logger.LogInformation("Generating diagram on server {Server} database {Database} schema {Schema} excluding {ExcludeSchemas}",
+            serverName, databaseName, includeSchema ?? "all",
+            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none");
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         await connection.ChangeDatabaseAsync(databaseName, cancellationToken);
 
-        var tables = await QueryTablesAsync(connection, schemaFilter, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
+        var tables = await QueryTablesAsync(connection, includeSchema, excludeSchemas, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
         if (tables.Count == 0)
-            return GenerateEmptyDiagram(serverName, databaseName, schemaFilter);
+            return GenerateEmptyDiagram(serverName, databaseName, includeSchema);
 
         var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
         var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
 
-        return BuildPlantUml(serverName, databaseName, schemaFilter, maxTables, tables, columns, foreignKeys);
+        return BuildPlantUml(serverName, databaseName, includeSchema, maxTables, tables, columns, foreignKeys);
     }
 
     private async Task<List<ColumnInfo>> QueryColumnsAsync(SqlConnection connection,
@@ -179,14 +181,14 @@ public sealed partial class DiagramService : IDiagramService
     }
 
     internal static string BuildPlantUml(string serverName, string databaseName,
-        string? schemaFilter, int maxTables, List<TableInfo> tables,
+        string? includeSchema, int maxTables, List<TableInfo> tables,
         List<ColumnInfo> columns, List<ForeignKeyInfo> foreignKeys)
     {
         var sb = new StringBuilder();
         sb.AppendLine("@startuml");
         sb.AppendLine($"' ER Diagram: {SanitizePlantUmlText(databaseName)} on {SanitizePlantUmlText(serverName)}");
         sb.Append("' Schema: ");
-        sb.Append(SanitizePlantUmlText(schemaFilter ?? "all"));
+        sb.Append(SanitizePlantUmlText(includeSchema ?? "all"));
         sb.AppendLine($" | Tables: {tables.Count}");
         sb.AppendLine();
         sb.AppendLine("skinparam linetype ortho");
@@ -288,12 +290,12 @@ public sealed partial class DiagramService : IDiagramService
         return sb.ToString();
     }
 
-    internal static string GenerateEmptyDiagram(string serverName, string databaseName, string? schemaFilter)
+    internal static string GenerateEmptyDiagram(string serverName, string databaseName, string? includeSchema)
     {
         var sb = new StringBuilder();
         sb.AppendLine("@startuml");
         sb.AppendLine($"' ER Diagram: {SanitizePlantUmlText(databaseName)} on {SanitizePlantUmlText(serverName)}");
-        sb.AppendLine($"' Schema: {SanitizePlantUmlText(schemaFilter ?? "all")} | Tables: 0");
+        sb.AppendLine($"' Schema: {SanitizePlantUmlText(includeSchema ?? "all")} | Tables: 0");
         sb.AppendLine();
         sb.AppendLine("note \"No tables found\" as N1");
         sb.AppendLine();
