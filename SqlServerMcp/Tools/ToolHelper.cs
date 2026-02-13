@@ -37,7 +37,7 @@ internal static class ToolHelper
         string description, CancellationToken cancellationToken)
     {
         var fullPath = Path.GetFullPath(outputPath);
-        if (!fullPath.EndsWith(allowedExtension, StringComparison.OrdinalIgnoreCase))
+        if (!Path.GetExtension(fullPath).Equals(allowedExtension, StringComparison.OrdinalIgnoreCase))
             throw new McpException($"Output path must have a {allowedExtension} file extension.");
 
         var directory = Path.GetDirectoryName(fullPath);
