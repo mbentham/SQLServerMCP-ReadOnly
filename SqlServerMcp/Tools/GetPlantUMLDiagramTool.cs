@@ -45,6 +45,9 @@ public sealed class GetPlantUMLDiagramTool
                 maxTables, cancellationToken, compact), cancellationToken);
 
         var fullPath = Path.GetFullPath(outputPath);
+        if (!fullPath.EndsWith(".puml", StringComparison.OrdinalIgnoreCase))
+            throw new McpException("Output path must have a .puml file extension.");
+
         var directory = Path.GetDirectoryName(fullPath);
         if (directory is not null)
             Directory.CreateDirectory(directory);
