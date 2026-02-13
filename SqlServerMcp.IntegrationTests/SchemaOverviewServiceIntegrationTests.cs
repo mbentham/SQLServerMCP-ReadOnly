@@ -20,8 +20,9 @@ public sealed class SchemaOverviewServiceIntegrationTests
         var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
 
         var result = await service.GenerateOverviewAsync(Server, Db,
-            includeSchema: null, excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         // Header
         Assert.Contains($"# Schema: {Db}", result);
@@ -58,8 +59,9 @@ public sealed class SchemaOverviewServiceIntegrationTests
         var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
 
         var result = await service.GenerateOverviewAsync(Server, Db,
-            includeSchema: "dbo", excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: ["dbo"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("## Categories", result);
         Assert.Contains("## Products", result);
@@ -70,13 +72,31 @@ public sealed class SchemaOverviewServiceIntegrationTests
     }
 
     [Fact]
+    public async Task GenerateOverview_IncludeMultipleSchemas_ShowsAllSpecifiedSchemas()
+    {
+        var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
+
+        var result = await service.GenerateOverviewAsync(Server, Db,
+            includeSchemas: ["dbo", "sales"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        // All four tables should be present
+        Assert.Contains("## Categories", result);
+        Assert.Contains("## Products", result);
+        Assert.Contains("## sales.Orders", result);
+        Assert.Contains("## sales.OrderItems", result);
+    }
+
+    [Fact]
     public async Task GenerateOverview_ExcludeSchemasFilter_ExcludesSchema()
     {
         var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
 
         var result = await service.GenerateOverviewAsync(Server, Db,
-            includeSchema: null, excludeSchemas: ["dbo"], maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: null, excludeSchemas: ["dbo"],
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("## sales.Orders", result);
         Assert.Contains("## sales.OrderItems", result);
@@ -92,8 +112,9 @@ public sealed class SchemaOverviewServiceIntegrationTests
         var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
 
         var result = await service.GenerateOverviewAsync(Server, Db,
-            includeSchema: "nonexistent_schema", excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: ["nonexistent_schema"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("No tables found", result);
     }
@@ -104,8 +125,9 @@ public sealed class SchemaOverviewServiceIntegrationTests
         var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
 
         var result = await service.GenerateOverviewAsync(Server, Db,
-            includeSchema: null, excludeSchemas: null, maxTables: 100,
-            CancellationToken.None, compact: true);
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None, compact: true);
 
         // Header still present
         Assert.Contains($"# Schema: {Db}", result);
@@ -126,5 +148,60 @@ public sealed class SchemaOverviewServiceIntegrationTests
         Assert.DoesNotContain("CHK:", result);
         Assert.DoesNotContain("DEFAULT", result);
         Assert.DoesNotContain("IDENTITY", result);
+    }
+
+    [Fact]
+    public async Task GenerateOverview_IncludeTables_ShowsOnlySpecifiedTables()
+    {
+        var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
+
+        var result = await service.GenerateOverviewAsync(Server, Db,
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: ["Categories", "Products"], excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        Assert.Contains("## Categories", result);
+        Assert.Contains("## Products", result);
+
+        // sales tables should not appear
+        Assert.DoesNotContain("## sales.Orders", result);
+        Assert.DoesNotContain("## sales.OrderItems", result);
+    }
+
+    [Fact]
+    public async Task GenerateOverview_ExcludeTables_ExcludesSpecifiedTables()
+    {
+        var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
+
+        var result = await service.GenerateOverviewAsync(Server, Db,
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: ["Categories"],
+            maxTables: 100, CancellationToken.None);
+
+        // Categories should be excluded
+        Assert.DoesNotContain("## Categories", result);
+
+        // Other tables should still appear
+        Assert.Contains("## Products", result);
+        Assert.Contains("## sales.Orders", result);
+    }
+
+    [Fact]
+    public async Task GenerateOverview_IncludeTablesWithSchemaFilter_BothApply()
+    {
+        var service = ServiceFactory.CreateSchemaOverviewService(_fixture.ConnectionString);
+
+        // Include only dbo schema AND only the Categories table
+        var result = await service.GenerateOverviewAsync(Server, Db,
+            includeSchemas: ["dbo"], excludeSchemas: null,
+            includeTables: ["Categories"], excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        Assert.Contains("## Categories", result);
+
+        // Products is in dbo but not in includeTables
+        Assert.DoesNotContain("## Products", result);
+        // sales tables excluded by schema filter
+        Assert.DoesNotContain("## sales.Orders", result);
     }
 }

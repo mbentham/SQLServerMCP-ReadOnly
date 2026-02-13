@@ -43,31 +43,31 @@ public class ToolHelperTests
     }
 
     // ───────────────────────────────────────────────
-    // ParseExcludeSchemas
+    // ParseCommaSeparatedList
     // ───────────────────────────────────────────────
 
     [Fact]
-    public void ParseExcludeSchemas_Null_ReturnsNull()
+    public void ParseCommaSeparatedList_Null_ReturnsNull()
     {
-        Assert.Null(ToolHelper.ParseExcludeSchemas(null));
+        Assert.Null(ToolHelper.ParseCommaSeparatedList(null));
     }
 
     [Fact]
-    public void ParseExcludeSchemas_Empty_ReturnsNull()
+    public void ParseCommaSeparatedList_Empty_ReturnsNull()
     {
-        Assert.Null(ToolHelper.ParseExcludeSchemas(""));
+        Assert.Null(ToolHelper.ParseCommaSeparatedList(""));
     }
 
     [Fact]
-    public void ParseExcludeSchemas_Whitespace_ReturnsNull()
+    public void ParseCommaSeparatedList_Whitespace_ReturnsNull()
     {
-        Assert.Null(ToolHelper.ParseExcludeSchemas("   "));
+        Assert.Null(ToolHelper.ParseCommaSeparatedList("   "));
     }
 
     [Fact]
-    public void ParseExcludeSchemas_SingleSchema_ReturnsSingleElement()
+    public void ParseCommaSeparatedList_SingleValue_ReturnsSingleElement()
     {
-        var result = ToolHelper.ParseExcludeSchemas("audit");
+        var result = ToolHelper.ParseCommaSeparatedList("audit");
 
         Assert.NotNull(result);
         Assert.Single(result);
@@ -75,9 +75,9 @@ public class ToolHelperTests
     }
 
     [Fact]
-    public void ParseExcludeSchemas_MultipleSchemas_ReturnsAll()
+    public void ParseCommaSeparatedList_MultipleValues_ReturnsAll()
     {
-        var result = ToolHelper.ParseExcludeSchemas("audit,staging,temp");
+        var result = ToolHelper.ParseCommaSeparatedList("audit,staging,temp");
 
         Assert.NotNull(result);
         Assert.Equal(3, result.Count);
@@ -87,9 +87,9 @@ public class ToolHelperTests
     }
 
     [Fact]
-    public void ParseExcludeSchemas_TrimsWhitespace()
+    public void ParseCommaSeparatedList_TrimsWhitespace()
     {
-        var result = ToolHelper.ParseExcludeSchemas(" audit , staging ");
+        var result = ToolHelper.ParseCommaSeparatedList(" audit , staging ");
 
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
@@ -98,9 +98,9 @@ public class ToolHelperTests
     }
 
     [Fact]
-    public void ParseExcludeSchemas_Duplicates_CaseInsensitive_Deduplicates()
+    public void ParseCommaSeparatedList_Duplicates_CaseInsensitive_Deduplicates()
     {
-        var result = ToolHelper.ParseExcludeSchemas("audit,Audit,AUDIT");
+        var result = ToolHelper.ParseCommaSeparatedList("audit,Audit,AUDIT");
 
         Assert.NotNull(result);
         Assert.Single(result);
@@ -108,9 +108,9 @@ public class ToolHelperTests
     }
 
     [Fact]
-    public void ParseExcludeSchemas_ConsecutiveCommas_SkipsEmptyEntries()
+    public void ParseCommaSeparatedList_ConsecutiveCommas_SkipsEmptyEntries()
     {
-        var result = ToolHelper.ParseExcludeSchemas("audit,,staging,,,temp");
+        var result = ToolHelper.ParseCommaSeparatedList("audit,,staging,,,temp");
 
         Assert.NotNull(result);
         Assert.Equal(3, result.Count);
@@ -120,8 +120,8 @@ public class ToolHelperTests
     }
 
     [Fact]
-    public void ParseExcludeSchemas_OnlyCommas_ReturnsNull()
+    public void ParseCommaSeparatedList_OnlyCommas_ReturnsNull()
     {
-        Assert.Null(ToolHelper.ParseExcludeSchemas(",,,"));
+        Assert.Null(ToolHelper.ParseCommaSeparatedList(",,,"));
     }
 }

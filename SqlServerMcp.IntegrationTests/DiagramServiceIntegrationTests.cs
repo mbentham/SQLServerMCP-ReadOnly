@@ -20,8 +20,9 @@ public sealed class DiagramServiceIntegrationTests
         var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
 
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: null, excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         // PlantUML envelope
         Assert.StartsWith("@startuml", result);
@@ -52,8 +53,9 @@ public sealed class DiagramServiceIntegrationTests
         var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
 
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: "sales", excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: ["sales"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("Orders", result);
         Assert.Contains("OrderItems", result);
@@ -64,13 +66,31 @@ public sealed class DiagramServiceIntegrationTests
     }
 
     [Fact]
+    public async Task GenerateDiagram_IncludeMultipleSchemas_ShowsAllSpecifiedSchemas()
+    {
+        var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
+
+        var result = await service.GenerateDiagramAsync(Server, Db,
+            includeSchemas: ["dbo", "sales"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        // All four tables should be present
+        Assert.Contains("Categories", result);
+        Assert.Contains("Products", result);
+        Assert.Contains("Orders", result);
+        Assert.Contains("OrderItems", result);
+    }
+
+    [Fact]
     public async Task GenerateDiagram_ExcludeSchemasFilter_ExcludesSchema()
     {
         var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
 
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: null, excludeSchemas: ["sales"], maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: null, excludeSchemas: ["sales"],
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("Categories", result);
         Assert.Contains("Products", result);
@@ -86,8 +106,9 @@ public sealed class DiagramServiceIntegrationTests
         var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
 
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: null, excludeSchemas: null, maxTables: 2,
-            CancellationToken.None);
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 2, CancellationToken.None);
 
         Assert.Contains("WARNING: Output truncated at 2 tables", result);
     }
@@ -99,8 +120,9 @@ public sealed class DiagramServiceIntegrationTests
 
         // Use a schema name that doesn't exist to get zero tables
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: "nonexistent_schema", excludeSchemas: null, maxTables: 100,
-            CancellationToken.None);
+            includeSchemas: ["nonexistent_schema"], excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None);
 
         Assert.Contains("No tables found", result);
     }
@@ -111,8 +133,9 @@ public sealed class DiagramServiceIntegrationTests
         var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
 
         var result = await service.GenerateDiagramAsync(Server, Db,
-            includeSchema: null, excludeSchemas: null, maxTables: 100,
-            CancellationToken.None, compact: true);
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: null,
+            maxTables: 100, CancellationToken.None, compact: true);
 
         // PlantUML envelope
         Assert.StartsWith("@startuml", result);
@@ -129,5 +152,60 @@ public sealed class DiagramServiceIntegrationTests
         Assert.DoesNotContain(": int", result);
         Assert.DoesNotContain(": nvarchar", result);
         Assert.DoesNotContain(": decimal", result);
+    }
+
+    [Fact]
+    public async Task GenerateDiagram_IncludeTables_ShowsOnlySpecifiedTables()
+    {
+        var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
+
+        var result = await service.GenerateDiagramAsync(Server, Db,
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: ["Categories", "Products"], excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        Assert.Contains("Categories", result);
+        Assert.Contains("Products", result);
+
+        // sales tables should not appear
+        Assert.DoesNotContain("entity \"sales.Orders\"", result);
+        Assert.DoesNotContain("entity \"sales.OrderItems\"", result);
+    }
+
+    [Fact]
+    public async Task GenerateDiagram_ExcludeTables_ExcludesSpecifiedTables()
+    {
+        var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
+
+        var result = await service.GenerateDiagramAsync(Server, Db,
+            includeSchemas: null, excludeSchemas: null,
+            includeTables: null, excludeTables: ["Categories"],
+            maxTables: 100, CancellationToken.None);
+
+        // Categories should be excluded
+        Assert.DoesNotContain("entity \"Categories\"", result);
+
+        // Other tables should still appear
+        Assert.Contains("Products", result);
+        Assert.Contains("Orders", result);
+    }
+
+    [Fact]
+    public async Task GenerateDiagram_IncludeTablesWithSchemaFilter_BothApply()
+    {
+        var service = ServiceFactory.CreateDiagramService(_fixture.ConnectionString);
+
+        // Include only dbo schema AND only the Categories table
+        var result = await service.GenerateDiagramAsync(Server, Db,
+            includeSchemas: ["dbo"], excludeSchemas: null,
+            includeTables: ["Categories"], excludeTables: null,
+            maxTables: 100, CancellationToken.None);
+
+        Assert.Contains("Categories", result);
+
+        // Products is in dbo but not in includeTables
+        Assert.DoesNotContain("entity \"Products\"", result);
+        // sales tables excluded by schema filter
+        Assert.DoesNotContain("entity \"sales.Orders\"", result);
     }
 }

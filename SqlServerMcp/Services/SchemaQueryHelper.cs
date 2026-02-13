@@ -23,7 +23,8 @@ internal static class SchemaQueryHelper
     }
 
     internal static (string Sql, List<SqlParameter> Parameters) BuildTableQuery(
-        string? includeSchema, IReadOnlyList<string>? excludeSchemas)
+        IReadOnlyList<string>? includeSchemas, IReadOnlyList<string>? excludeSchemas,
+        IReadOnlyList<string>? includeTables = null, IReadOnlyList<string>? excludeTables = null)
     {
         var sql = new StringBuilder("""
             SELECT s.name AS SchemaName, t.name AS TableName
@@ -35,31 +36,41 @@ internal static class SchemaQueryHelper
 
         var parameters = new List<SqlParameter>();
 
-        if (includeSchema is not null)
-        {
-            sql.Append(" AND s.name = @includeSchema");
-            parameters.Add(new SqlParameter("@includeSchema", includeSchema));
-        }
-        else if (excludeSchemas is { Count: > 0 })
-        {
-            for (var i = 0; i < excludeSchemas.Count; i++)
-            {
-                sql.Append(i == 0 ? " AND s.name NOT IN (" : ", ");
-                sql.Append(CultureInfo.InvariantCulture, $"@excl{i}");
-                parameters.Add(new SqlParameter($"@excl{i}", excludeSchemas[i]));
-            }
-            sql.Append(')');
-        }
+        AppendFilter(sql, parameters, "s.name", includeSchemas, "inclSchema", negate: false);
+        AppendFilter(sql, parameters, "s.name", excludeSchemas, "excl", negate: true,
+            skip: includeSchemas is { Count: > 0 });
+
+        AppendFilter(sql, parameters, "t.name", includeTables, "incTbl", negate: false);
+        AppendFilter(sql, parameters, "t.name", excludeTables, "exclTbl", negate: true,
+            skip: includeTables is { Count: > 0 });
 
         sql.Append(" ORDER BY s.name, t.name");
         return (sql.ToString(), parameters);
     }
 
+    private static void AppendFilter(StringBuilder sql, List<SqlParameter> parameters,
+        string column, IReadOnlyList<string>? values, string paramPrefix, bool negate, bool skip = false)
+    {
+        if (skip || values is not { Count: > 0 })
+            return;
+
+        var keyword = negate ? "NOT IN" : "IN";
+        for (var i = 0; i < values.Count; i++)
+        {
+            sql.Append(i == 0 ? $" AND {column} {keyword} (" : ", ");
+            sql.Append(CultureInfo.InvariantCulture, $"@{paramPrefix}{i}");
+            parameters.Add(new SqlParameter($"@{paramPrefix}{i}", values[i]));
+        }
+        sql.Append(')');
+    }
+
     internal static async Task<List<TableInfo>> QueryTablesAsync(SqlConnection connection,
-        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables, int commandTimeoutSeconds,
+        IReadOnlyList<string>? includeSchemas, IReadOnlyList<string>? excludeSchemas,
+        IReadOnlyList<string>? includeTables, IReadOnlyList<string>? excludeTables,
+        int maxTables, int commandTimeoutSeconds,
         CancellationToken cancellationToken)
     {
-        var (sql, parameters) = BuildTableQuery(includeSchema, excludeSchemas);
+        var (sql, parameters) = BuildTableQuery(includeSchemas, excludeSchemas, includeTables, excludeTables);
 
         await using var cmd = new SqlCommand(sql, connection)
         {

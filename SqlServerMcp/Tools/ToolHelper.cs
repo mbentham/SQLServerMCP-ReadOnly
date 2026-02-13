@@ -29,20 +29,20 @@ internal static class ToolHelper
     }
 
     /// <summary>
-    /// Parses a comma-separated exclude-schemas string into a deduplicated list.
+    /// Parses a comma-separated string into a deduplicated list.
     /// Returns null if the input is null, empty, or contains only whitespace/commas.
     /// </summary>
-    public static IReadOnlyList<string>? ParseExcludeSchemas(string? input)
+    public static IReadOnlyList<string>? ParseCommaSeparatedList(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
             return null;
 
-        var schemas = input.Split(',')
+        var items = input.Split(',')
             .Select(s => s.Trim())
             .Where(s => s.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return schemas.Count > 0 ? schemas : null;
+        return items.Count > 0 ? items : null;
     }
 }

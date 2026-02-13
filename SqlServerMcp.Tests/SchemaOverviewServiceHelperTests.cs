@@ -275,7 +275,7 @@ public class SchemaOverviewServiceHelperTests
         var tables = new List<TableInfo> { new("sales", "Orders") };
         var columns = new List<ColumnInfo>();
 
-        var result = SchemaOverviewService.BuildMarkdown("srv", "db", "sales", 50,
+        var result = SchemaOverviewService.BuildMarkdown("srv", "db", ["sales"], 50,
             tables, columns, [], [], []);
 
         Assert.Contains("Schema: sales", result);

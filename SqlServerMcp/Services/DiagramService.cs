@@ -32,27 +32,31 @@ public sealed partial class DiagramService : IDiagramService
         bool IsNullable, bool IsUnique);
 
     public async Task<string> GenerateDiagramAsync(string serverName, string databaseName,
-        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables,
-        CancellationToken cancellationToken, bool compact = false)
+        IReadOnlyList<string>? includeSchemas, IReadOnlyList<string>? excludeSchemas,
+        IReadOnlyList<string>? includeTables, IReadOnlyList<string>? excludeTables,
+        int maxTables, CancellationToken cancellationToken, bool compact = false)
     {
         var serverConfig = _options.ResolveServer(serverName);
 
-        _logger.LogInformation("Generating diagram on server {Server} database {Database} schema {Schema} excluding {ExcludeSchemas}",
-            serverName, databaseName, includeSchema ?? "all",
-            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none");
+        _logger.LogInformation("Generating diagram on server {Server} database {Database} schemas {Schemas} excluding {ExcludeSchemas} tables {Tables} excluding {ExcludeTables}",
+            serverName, databaseName,
+            includeSchemas is { Count: > 0 } ? string.Join(",", includeSchemas) : "all",
+            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none",
+            includeTables is { Count: > 0 } ? string.Join(",", includeTables) : "all",
+            excludeTables is { Count: > 0 } ? string.Join(",", excludeTables) : "none");
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         await connection.ChangeDatabaseAsync(databaseName, cancellationToken);
 
-        var tables = await QueryTablesAsync(connection, includeSchema, excludeSchemas, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
+        var tables = await QueryTablesAsync(connection, includeSchemas, excludeSchemas, includeTables, excludeTables, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
         if (tables.Count == 0)
-            return GenerateEmptyDiagram(serverName, databaseName, includeSchema);
+            return GenerateEmptyDiagram(serverName, databaseName, includeSchemas);
 
         var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
         var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
 
-        return BuildPlantUml(serverName, databaseName, includeSchema, maxTables, tables, columns, foreignKeys, compact);
+        return BuildPlantUml(serverName, databaseName, includeSchemas, maxTables, tables, columns, foreignKeys, compact);
     }
 
     private async Task<List<ColumnInfo>> QueryColumnsAsync(SqlConnection connection,
@@ -182,14 +186,14 @@ public sealed partial class DiagramService : IDiagramService
     }
 
     internal static string BuildPlantUml(string serverName, string databaseName,
-        string? includeSchema, int maxTables, List<TableInfo> tables,
+        IReadOnlyList<string>? includeSchemas, int maxTables, List<TableInfo> tables,
         List<ColumnInfo> columns, List<ForeignKeyInfo> foreignKeys, bool compact = false)
     {
         var sb = new StringBuilder();
         sb.AppendLine("@startuml");
         sb.AppendLine($"' ER Diagram: {SanitizePlantUmlText(databaseName)} on {SanitizePlantUmlText(serverName)}");
         sb.Append("' Schema: ");
-        sb.Append(SanitizePlantUmlText(includeSchema ?? "all"));
+        sb.Append(SanitizePlantUmlText(includeSchemas is { Count: > 0 } ? string.Join(",", includeSchemas) : "all"));
         sb.AppendLine($" | Tables: {tables.Count}");
         sb.AppendLine();
         sb.AppendLine("skinparam linetype ortho");
@@ -320,12 +324,13 @@ public sealed partial class DiagramService : IDiagramService
         return sb.ToString();
     }
 
-    internal static string GenerateEmptyDiagram(string serverName, string databaseName, string? includeSchema)
+    internal static string GenerateEmptyDiagram(string serverName, string databaseName, IReadOnlyList<string>? includeSchemas)
     {
+        var schemaDisplay = includeSchemas is { Count: > 0 } ? string.Join(",", includeSchemas) : "all";
         var sb = new StringBuilder();
         sb.AppendLine("@startuml");
         sb.AppendLine($"' ER Diagram: {SanitizePlantUmlText(databaseName)} on {SanitizePlantUmlText(serverName)}");
-        sb.AppendLine($"' Schema: {SanitizePlantUmlText(includeSchema ?? "all")} | Tables: 0");
+        sb.AppendLine($"' Schema: {SanitizePlantUmlText(schemaDisplay)} | Tables: 0");
         sb.AppendLine();
         sb.AppendLine("note \"No tables found\" as N1");
         sb.AppendLine();

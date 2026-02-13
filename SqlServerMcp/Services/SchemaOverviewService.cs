@@ -35,30 +35,34 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     internal sealed record UniqueColumnInfo(string Schema, string TableName, string ColumnName);
 
     public async Task<string> GenerateOverviewAsync(string serverName, string databaseName,
-        string? includeSchema, IReadOnlyList<string>? excludeSchemas, int maxTables,
-        CancellationToken cancellationToken, bool compact = false)
+        IReadOnlyList<string>? includeSchemas, IReadOnlyList<string>? excludeSchemas,
+        IReadOnlyList<string>? includeTables, IReadOnlyList<string>? excludeTables,
+        int maxTables, CancellationToken cancellationToken, bool compact = false)
     {
         var serverConfig = _options.ResolveServer(serverName);
 
-        _logger.LogInformation("Generating schema overview on server {Server} database {Database} schema {Schema} excluding {ExcludeSchemas}",
-            serverName, databaseName, includeSchema ?? "all",
-            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none");
+        _logger.LogInformation("Generating schema overview on server {Server} database {Database} schemas {Schemas} excluding {ExcludeSchemas} tables {Tables} excluding {ExcludeTables}",
+            serverName, databaseName,
+            includeSchemas is { Count: > 0 } ? string.Join(",", includeSchemas) : "all",
+            excludeSchemas is { Count: > 0 } ? string.Join(",", excludeSchemas) : "none",
+            includeTables is { Count: > 0 } ? string.Join(",", includeTables) : "all",
+            excludeTables is { Count: > 0 } ? string.Join(",", excludeTables) : "none");
 
         await using var connection = new SqlConnection(serverConfig.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         await connection.ChangeDatabaseAsync(databaseName, cancellationToken);
 
-        var tables = await QueryTablesAsync(connection, includeSchema, excludeSchemas, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
+        var tables = await QueryTablesAsync(connection, includeSchemas, excludeSchemas, includeTables, excludeTables, maxTables, _options.CommandTimeoutSeconds, cancellationToken);
         if (tables.Count == 0)
             return $"No tables found in database '{databaseName}' on server '{serverName}'" +
-                   (includeSchema is not null ? $" (schema filter: '{includeSchema}')" : "") + ".";
+                   (includeSchemas is { Count: > 0 } ? $" (schema filter: '{string.Join(",", includeSchemas)}')" : "") + ".";
 
         var columns = await QueryColumnsAsync(connection, tables, cancellationToken);
         var foreignKeys = await QueryForeignKeysAsync(connection, tables, cancellationToken);
         var checkConstraints = await QueryCheckConstraintsAsync(connection, tables, cancellationToken);
         var uniqueColumns = await QueryUniqueColumnsAsync(connection, tables, cancellationToken);
 
-        return BuildMarkdown(serverName, databaseName, includeSchema, maxTables,
+        return BuildMarkdown(serverName, databaseName, includeSchemas, maxTables,
             tables, columns, foreignKeys, checkConstraints, uniqueColumns, compact);
     }
 
@@ -262,7 +266,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
     }
 
     internal static string BuildMarkdown(string serverName, string databaseName,
-        string? includeSchema, int maxTables, List<TableInfo> tables,
+        IReadOnlyList<string>? includeSchemas, int maxTables, List<TableInfo> tables,
         List<ColumnInfo> columns, List<ForeignKeyInfo> foreignKeys,
         List<CheckConstraintInfo> checkConstraints, List<UniqueColumnInfo> uniqueColumns,
         bool compact = false)
@@ -290,7 +294,7 @@ public sealed class SchemaOverviewService : ISchemaOverviewService
         var sb = new StringBuilder();
         sb.AppendLine($"# Schema: {SanitizeMarkdownCell(databaseName)} on {SanitizeMarkdownCell(serverName)}");
         sb.AppendLine($"Tables: {tables.Count}" +
-                       (includeSchema is not null ? $" | Schema: {SanitizeMarkdownCell(includeSchema)}" : "") +
+                       (includeSchemas is { Count: > 0 } ? $" | Schema: {SanitizeMarkdownCell(string.Join(",", includeSchemas))}" : "") +
                        (tables.Count >= maxTables ? $" | **Truncated at {maxTables}**" : ""));
         sb.AppendLine();
 
