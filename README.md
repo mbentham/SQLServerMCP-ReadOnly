@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.mbentham/sqlaugur -->
 # SqlAugur
 
 [![NuGet](https://img.shields.io/nuget/v/SqlAugur.svg)](https://www.nuget.org/packages/SqlAugur)
